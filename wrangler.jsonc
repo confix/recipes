@@ -1,0 +1,26 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "recipes",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "./workers/app.ts",
+	// `assets.directory` is intentionally absent: the Cloudflare Vite plugin
+	// populates it from the client build output and emits a flattened
+	// build/server/wrangler.json at build time.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "recipes-db",
+			"database_id": "local",
+			// Must match `out` in drizzle.config.ts. drizzle-kit generates the
+			// SQL; wrangler owns applying it.
+			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "recipes-uploads"
+		}
+	]
+}
