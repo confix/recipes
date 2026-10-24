@@ -39,7 +39,7 @@ pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
 
-Sign up at `/login`, then point an MCP client at `http://localhost:5173/mcp`
+Sign up at `/signup`, then point an MCP client at `http://localhost:5173/mcp`
 or create an API token on the home page. The home page also searches your
 recipes; `/r/<slug>` is a read-only view for the kitchen.
 

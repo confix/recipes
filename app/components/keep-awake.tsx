@@ -46,16 +46,22 @@ export function KeepAwake() {
 
   if (!supported) return null;
   return (
-    <label className="flex items-center gap-2 text-sm text-neutral-500">
+    <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-stone-600 select-none dark:text-stone-400">
+      {refused ? "Couldn't keep the screen on" : "Keep screen on"}
       <input
         type="checkbox"
+        role="switch"
+        className="peer sr-only"
         checked={wanted}
         onChange={(event) => {
           setRefused(false);
           setWanted(event.target.checked);
         }}
       />
-      {refused ? "Couldn't keep the screen on" : "Keep screen on"}
+      <span
+        aria-hidden="true"
+        className="relative h-6 w-10 rounded-full bg-stone-300 transition peer-checked:bg-brand-600 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600 after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-4 dark:bg-stone-700"
+      />
     </label>
   );
 }

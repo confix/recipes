@@ -7,6 +7,8 @@ import {
   ScrollRestoration,
 } from "react-router";
 
+import { Logo } from "~/components/ui";
+
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -19,7 +21,7 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
 ];
 
@@ -62,11 +64,17 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
+    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 p-6">
+      <Logo />
+      <h1 className="font-display text-5xl font-semibold tracking-tight">{message}</h1>
+      <p className="text-stone-600 dark:text-stone-400">{details}</p>
+      <p>
+        <a href="/" className="font-medium text-brand-700 underline underline-offset-2 dark:text-brand-300">
+          Back to your recipes
+        </a>
+      </p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+        <pre className="w-full overflow-x-auto rounded-lg bg-stone-900 p-4 text-sm text-stone-100">
           <code>{stack}</code>
         </pre>
       )}

@@ -12,7 +12,7 @@ each user manage their recipes and find them quickly — including "something li
 | --- | --- |
 | Source of truth | Markdown files in R2. Everything else is a derived, rebuildable index. |
 | Baking vs cooking | One recipe type with `kind: bake \| cook`. Bakes may add a weighted `formula` block; baker's % / hydration are derived from it. |
-| UI | Minimal: sign-in, search + list, a read-only recipe view for the kitchen, API tokens. No editor. |
+| UI | Minimal: a public front page with MCP setup, sign-in and sign-up, search + list, a read-only recipe view for the kitchen, API tokens. No editor. |
 | Users | Multi-user. Each user has a private library; every storage key and index row is scoped by `user_id`. |
 | Validation | valibot (frontmatter and request bodies). |
 | Auth | Accounts via better-auth (kept from v1, social login). MCP uses OAuth (workers-oauth-provider, delegating login to better-auth). REST uses per-user personal access tokens (stored hashed in D1). |

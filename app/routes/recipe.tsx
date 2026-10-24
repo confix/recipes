@@ -1,6 +1,7 @@
 import { Link, data } from "react-router";
 
 import { KeepAwake } from "~/components/keep-awake";
+import { Alert, KindBadge } from "~/components/ui";
 import { bakersPercentages, formatPercent } from "~/lib/bakers-math";
 import { requireUser } from "~/lib/auth.server";
 import { renderMarkdown } from "~/lib/markdown";
@@ -30,6 +31,16 @@ function logView(body: string) {
     log: [...entries].reverse().sort((a, b) => b.date.localeCompare(a.date)),
     logNotesHtml: unrecognized.length ? renderMarkdown(unrecognized.join("\n")) : null,
   };
+}
+
+/**
+ * The description paragraph(s) before the first heading, so the page can
+ * show them under the title and above the formula.
+ */
+function splitIntro(markdown: string) {
+  const heading = /^#{1,6}\s/m.exec(markdown);
+  if (!heading) return { intro: "", rest: markdown };
+  return { intro: markdown.slice(0, heading.index).trim(), rest: markdown.slice(heading.index) };
 }
 
 /** Only http(s) sources become links; anything else is shown as text. */
@@ -66,6 +77,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 
   const fm = parsed.recipe.frontmatter;
+  const { intro, rest } = splitIntro(withoutLog(parsed.recipe.body));
   return {
     title: fm.title,
     invalid: null,
@@ -79,7 +91,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     variantOf: fm.variant_of ?? null,
     bakers: fm.formula ? bakersPercentages(fm.formula) : null,
     formula: fm.formula ?? null,
-    html: renderMarkdown(withoutLog(parsed.recipe.body)),
+    introHtml: intro ? renderMarkdown(intro) : null,
+    html: renderMarkdown(rest),
     ...logView(parsed.recipe.body),
   };
 }
@@ -87,99 +100,120 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
   if (recipe.invalid) {
     return (
-      <main className="mx-auto max-w-2xl p-4 sm:p-6">
-        <Link to="/" className="text-sm text-neutral-500 underline">
-          ← Recipes
-        </Link>
-        <h1 className="mt-4 text-2xl font-semibold">{recipe.title}</h1>
-        <div role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm dark:bg-red-950">
-          <p className="mb-1">This recipe file has problems:</p>
-          <ul className="list-disc pl-5">
-            {recipe.invalid.issues.map((issue) => (
-              <li key={issue}>{issue}</li>
-            ))}
-          </ul>
+      <Page>
+        <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight">{recipe.title}</h1>
+        <div className="mt-6">
+          <Alert>
+            <p className="mb-1 font-medium">This recipe file has problems:</p>
+            <ul className="list-disc pl-5">
+              {recipe.invalid.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </Alert>
         </div>
-        <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-sm">
+        <pre className="mt-6 overflow-x-auto rounded-2xl bg-white p-4 text-sm whitespace-pre-wrap ring-1 ring-stone-900/5 dark:bg-stone-900 dark:ring-white/10">
           {recipe.invalid.markdown}
         </pre>
-      </main>
+      </Page>
     );
   }
 
   const facts = [
-    recipe.kind === "bake" ? "Bake" : "Cook",
-    recipe.servings ? `Serves ${recipe.servings}` : null,
-    recipe.activeMinutes != null ? `${formatMinutes(recipe.activeMinutes)} active` : null,
-    recipe.totalMinutes != null ? `${formatMinutes(recipe.totalMinutes)} total` : null,
-  ].filter(Boolean);
+    recipe.servings ? { label: "Serves", value: recipe.servings } : null,
+    recipe.activeMinutes != null ? { label: "Active", value: formatMinutes(recipe.activeMinutes) } : null,
+    recipe.totalMinutes != null ? { label: "Total", value: formatMinutes(recipe.totalMinutes) } : null,
+    recipe.bakers ? { label: "Hydration", value: formatPercent(recipe.bakers.hydration) } : null,
+  ].filter((fact) => fact != null);
 
   return (
-    <main className="mx-auto max-w-2xl p-4 text-lg sm:p-6">
-      <nav className="flex items-center justify-between">
-        <Link to="/" className="text-sm text-neutral-500 underline">
-          ← Recipes
-        </Link>
-        <KeepAwake />
-      </nav>
+    <Page>
+      <header className="mt-8 flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <KindBadge kind={recipe.kind} />
+          {recipe.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-stone-200/70 px-2.5 py-0.5 text-xs font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+        <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl">
+          {recipe.title}
+        </h1>
+        {recipe.introHtml ? (
+          <div
+            className="recipe-body text-xl text-stone-700 dark:text-stone-300"
+            // Rendered by renderMarkdown, which escapes raw HTML and unsafe links.
+            dangerouslySetInnerHTML={{ __html: recipe.introHtml }}
+          />
+        ) : null}
+        {recipe.variantOf || recipe.source ? (
+          <div className="flex flex-col gap-1 text-sm text-stone-600 dark:text-stone-400">
+            {recipe.variantOf ? (
+              <p>
+                Variation of{" "}
+                <Link to={`/r/${recipe.variantOf}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
+                  {recipe.variantOf}
+                </Link>
+              </p>
+            ) : null}
+            {recipe.source ? (
+              <p className="break-words">
+                Source:{" "}
+                {recipe.sourceUrl ? (
+                  <a
+                    href={recipe.sourceUrl}
+                    rel="noreferrer noopener"
+                    className="font-medium text-brand-700 hover:underline dark:text-brand-300"
+                  >
+                    {recipe.source}
+                  </a>
+                ) : (
+                  recipe.source
+                )}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
-      <header className="mt-4 flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{recipe.title}</h1>
-        <p className="text-base text-neutral-500">{facts.join(" · ")}</p>
-        {recipe.tags.length > 0 ? (
-          <ul className="flex flex-wrap gap-2 text-sm">
-            {recipe.tags.map((tag) => (
-              <li key={tag} className="rounded bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800">
-                {tag}
-              </li>
+        {facts.length > 0 ? (
+          <dl className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-stone-900/5 ring-1 ring-stone-900/5 sm:grid-cols-4 dark:bg-white/10 dark:ring-white/10">
+            {facts.map((fact) => (
+              <div key={fact.label} className="bg-white px-4 py-3 dark:bg-stone-900">
+                <dt className="text-xs font-semibold tracking-wider text-stone-500 uppercase">{fact.label}</dt>
+                <dd className="mt-0.5 font-display text-xl font-semibold">{fact.value}</dd>
+              </div>
             ))}
-          </ul>
-        ) : null}
-        {recipe.variantOf ? (
-          <p className="text-sm">
-            Variation of{" "}
-            <Link to={`/r/${recipe.variantOf}`} className="underline">
-              {recipe.variantOf}
-            </Link>
-          </p>
-        ) : null}
-        {recipe.source ? (
-          <p className="break-words text-sm text-neutral-500">
-            Source:{" "}
-            {recipe.sourceUrl ? (
-              <a href={recipe.sourceUrl} rel="noreferrer noopener" className="underline">
-                {recipe.source}
-              </a>
-            ) : (
-              recipe.source
-            )}
-          </p>
+          </dl>
         ) : null}
       </header>
 
       {recipe.formula ? (
-        <section className="mt-6">
-          <h2 className="mb-2 text-xl font-semibold">Formula</h2>
-          <table className="w-full text-left">
-            <thead className="text-sm text-neutral-500">
+        <section className="mt-10 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-900/5 sm:p-6 dark:bg-stone-900 dark:ring-white/10">
+          <h2 className="font-display text-2xl font-semibold tracking-tight">Formula</h2>
+          <table className="mt-3 w-full text-left">
+            <thead className="text-xs font-semibold tracking-wider text-stone-500 uppercase">
               <tr>
-                <th className="py-1 font-normal">Ingredient</th>
-                <th className="py-1 text-right font-normal">g</th>
-                {recipe.bakers ? <th className="py-1 text-right font-normal">%</th> : null}
+                <th className="py-2">Ingredient</th>
+                <th className="py-2 text-right">Grams</th>
+                {recipe.bakers ? <th className="py-2 text-right">Baker's %</th> : null}
               </tr>
             </thead>
             <tbody>
               {recipe.formula.map((entry, i) => (
-                <tr key={i} className="border-t border-neutral-200 dark:border-neutral-800">
-                  <td className="py-1">
+                <tr key={i} className="border-t border-stone-900/5 dark:border-white/10">
+                  <td className="py-2.5">
                     {entry.name}
                     {entry.note ? (
-                      <span className="text-sm text-neutral-500">, {entry.note}</span>
+                      <span className="text-sm text-stone-500">, {entry.note}</span>
                     ) : null}
                   </td>
-                  <td className="py-1 text-right tabular-nums">{entry.grams}</td>
+                  <td className="py-2.5 text-right font-medium tabular-nums">{entry.grams}</td>
                   {recipe.bakers ? (
-                    <td className="py-1 text-right tabular-nums">
+                    <td className="py-2.5 text-right text-brand-700 tabular-nums dark:text-brand-300">
                       {formatPercent(recipe.bakers.entries[i].percent)}
                     </td>
                   ) : null}
@@ -187,11 +221,6 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
               ))}
             </tbody>
           </table>
-          {recipe.bakers ? (
-            <p className="mt-2 text-base">
-              Hydration <strong>{formatPercent(recipe.bakers.hydration)}</strong>
-            </p>
-          ) : null}
         </section>
       ) : null}
 
@@ -202,21 +231,26 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
       />
 
       {recipe.log.length > 0 || recipe.logNotesHtml ? (
-        <section className="mt-8">
-          <h2 className="mb-2 text-xl font-semibold">Cooked</h2>
-          <ul className="flex flex-col gap-1 text-base">
+        <section className="mt-12 border-t border-stone-900/10 pt-8 dark:border-white/10">
+          <h2 className="font-display text-2xl font-semibold tracking-tight">Cooking log</h2>
+          <ol className="mt-4 flex flex-col gap-3 text-base">
             {recipe.log.map((entry, i) => (
-              <li key={i}>
-                <span className="tabular-nums">{entry.date}</span>
-                {entry.rating ? (
-                  <span className="ml-2" role="img" aria-label={`${entry.rating} of 5`}>
-                    {"★".repeat(entry.rating)}
-                  </span>
+              <li key={i} className="relative border-l-2 border-brand-200 pl-4 dark:border-brand-900">
+                <div className="flex flex-wrap items-baseline gap-x-3">
+                  <span className="font-medium tabular-nums">{entry.date}</span>
+                  {entry.rating ? (
+                    <span className="text-amber-500" role="img" aria-label={`${entry.rating} of 5`}>
+                      {"★".repeat(entry.rating)}
+                      <span className="text-stone-300 dark:text-stone-700">{"★".repeat(5 - entry.rating)}</span>
+                    </span>
+                  ) : null}
+                </div>
+                {entry.notes ? (
+                  <p className="mt-0.5 text-stone-600 dark:text-stone-400">{entry.notes}</p>
                 ) : null}
-                {entry.notes ? <span className="ml-2 text-neutral-500">{entry.notes}</span> : null}
               </li>
             ))}
-          </ul>
+          </ol>
           {recipe.logNotesHtml ? (
             <div
               className="recipe-body text-base"
@@ -226,6 +260,26 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
           ) : null}
         </section>
       ) : null}
-    </main>
+    </Page>
+  );
+}
+
+/** Kitchen reading: one column, large type, a way back and the screen lock. */
+function Page({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen">
+      <nav className="sticky top-0 z-10 border-b border-stone-900/5 bg-paper/80 backdrop-blur dark:border-white/5 dark:bg-paper-dark/80">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <Link
+            to="/"
+            className="flex items-center gap-1 text-sm font-medium text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+          >
+            <span aria-hidden="true">←</span> All recipes
+          </Link>
+          <KeepAwake />
+        </div>
+      </nav>
+      <main className="mx-auto max-w-3xl px-4 pb-24 text-lg sm:px-6">{children}</main>
+    </div>
   );
 }
