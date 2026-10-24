@@ -4,6 +4,12 @@
 	"compatibility_date": "2026-07-16",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "./workers/app.ts",
+	// Served only on the custom domain: one origin for sign-in cookies and MCP
+	// OAuth, and no second copy of the app on *.workers.dev. The domain's
+	// zone (confix.run) must be on the same Cloudflare account; deploy
+	// creates the DNS record and certificate.
+	"routes": [{ "pattern": "recipes.confix.run", "custom_domain": true }],
+	"workers_dev": false,
 	// Declared so `wrangler types` types them without a .dev.vars present.
 	// ALLOWED_EMAILS: who may sign up (app/lib/allowed-emails.ts). A secret
 	// rather than a var so the addresses stay out of the repository.

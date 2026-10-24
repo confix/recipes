@@ -73,21 +73,23 @@ push and pull request, and runs `scripts/deploy.sh` for every push to `main`:
 
 One-time setup:
 
-- In the Cloudflare dashboard, open **Workers & Pages** once so the account
-  has a `*.workers.dev` subdomain; without it the first deploy stops and asks
-  for one.
+- The app is served at **https://recipes.confix.run** (`routes` in
+  `wrangler.jsonc`; the `workers.dev` URL is turned off). The `confix.run`
+  zone must be on the same Cloudflare account; the deploy creates the DNS
+  record and certificate for `recipes.confix.run`. If a record by that name
+  already exists, remove it first, or the deploy refuses the domain.
 - In the GitHub repository (Settings → Secrets and variables → Actions, or the
   `production` environment), add:
 
 | Secret | Value |
 | --- | --- |
 | `CLOUDFLARE_ACCOUNT_ID` | Your account id (dashboard → Workers & Pages, right-hand side). |
-| `CLOUDFLARE_API_TOKEN` | An API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit** and **Account → Vectorize → Edit**, limited to that account. |
+| `CLOUDFLARE_API_TOKEN` | An API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit** and **Account → Vectorize → Edit**, limited to that account; for zone permissions, include the `confix.run` zone, and add **Zone → DNS → Edit** if the deploy is refused permission to create the domain. |
 | `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Changing it signs everyone out. |
 | `ALLOWED_EMAILS` | Who may sign up: email addresses separated by commas, or `*` for anyone. |
 
-The deploy log prints the Worker's URL. Sign up there; MCP clients connect to
-`<url>/mcp`. Run `POST /api/reindex` once per user if recipes were added while
+Sign up at https://recipes.confix.run; MCP clients connect to
+`https://recipes.confix.run/mcp`. Run `POST /api/reindex` once per user if recipes were added while
 embeddings were unavailable.
 
 Sign-up is invite-only: only addresses in `ALLOWED_EMAILS` can create an
@@ -106,7 +108,7 @@ OAuth: the client registers itself, you sign in and approve it on
 `/authorize`, and it only ever sees your own recipes.
 
 ```sh
-claude mcp add --transport http recipes https://<your-worker>/mcp
+claude mcp add --transport http recipes https://recipes.confix.run/mcp
 ```
 
 Tools: `search_recipes`, `find_similar`, `get_recipe`, `save_recipe`,
