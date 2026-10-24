@@ -4,6 +4,7 @@
 #   CLOUDFLARE_API_TOKEN   API token, permissions listed in README "Deploying"
 #   CLOUDFLARE_ACCOUNT_ID  the account to deploy to
 #   BETTER_AUTH_SECRET     session signing secret, e.g. `openssl rand -hex 32`
+#   ALLOWED_EMAILS         who may sign up, comma-separated (`*` = anyone)
 name: CI
 
 on:
@@ -49,9 +50,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
         run: |
           missing=0
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID BETTER_AUTH_SECRET; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID BETTER_AUTH_SECRET ALLOWED_EMAILS; do
             if [ -z "${!name}" ]; then
               echo "::error::Secret $name is not set. See README \"Deploying\"."
               missing=1
@@ -75,5 +77,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
           DEPLOY_MESSAGE: ${{ github.sha }}
         run: scripts/deploy.sh

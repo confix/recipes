@@ -34,6 +34,7 @@ percentages and hydration; see docs/design.md.
 ```sh
 pnpm install
 echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" > .dev.vars
+echo "ALLOWED_EMAILS=*" >> .dev.vars   # who may sign up; see below
 pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
@@ -83,14 +84,20 @@ One-time setup:
 | `CLOUDFLARE_ACCOUNT_ID` | Your account id (dashboard → Workers & Pages, right-hand side). |
 | `CLOUDFLARE_API_TOKEN` | An API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit** and **Account → Vectorize → Edit**, limited to that account. |
 | `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Changing it signs everyone out. |
+| `ALLOWED_EMAILS` | Who may sign up: email addresses separated by commas, or `*` for anyone. |
 
 The deploy log prints the Worker's URL. Sign up there; MCP clients connect to
 `<url>/mcp`. Run `POST /api/reindex` once per user if recipes were added while
 embeddings were unavailable.
 
+Sign-up is invite-only: only addresses in `ALLOWED_EMAILS` can create an
+account, and if it is empty nobody can. To change the list, update the GitHub
+secret and redeploy (or `wrangler secret put ALLOWED_EMAILS`). Removing an
+address does not delete an account that already exists.
+
 To deploy by hand: `wrangler login`, then
-`BETTER_AUTH_SECRET=… scripts/deploy.sh` (the secret can be left out after the
-first deploy; the Worker keeps it).
+`BETTER_AUTH_SECRET=… ALLOWED_EMAILS=… scripts/deploy.sh` (both can be left
+out after the first deploy; the Worker keeps them).
 
 ## MCP
 
