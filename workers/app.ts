@@ -1,9 +1,8 @@
 import { OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
-import { createMcpHandler } from "agents/mcp/server";
 import { RouterContextProvider, createRequestHandler } from "react-router";
 
 import { oauthHelpersContext } from "~/mcp/oauth-context";
-import { createRecipesMcpServer } from "~/mcp/server";
+import { createRecipesMcpHandler } from "~/mcp/handler";
 
 type OAuthEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
@@ -12,7 +11,7 @@ const requestHandler = createRequestHandler(
   import.meta.env.MODE,
 );
 
-const mcpHandler = createMcpHandler(createRecipesMcpServer, { route: "/mcp" });
+const mcpHandler = createRecipesMcpHandler();
 
 /**
  * OAuthProvider owns the OAuth endpoints and guards /mcp: requests there must
