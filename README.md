@@ -38,8 +38,9 @@ pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
 
-Sign up at `/login`, then create an API token on the home page, or point an
-MCP client at `http://localhost:5173/mcp`.
+Sign up at `/login`, then point an MCP client at `http://localhost:5173/mcp`
+or create an API token on the home page. The home page also searches your
+recipes; `/r/<slug>` is a read-only view for the kitchen.
 
 Semantic search needs Workers AI and Vectorize, which only exist remotely.
 Plain `pnpm dev` runs without them and search falls back to keywords; after

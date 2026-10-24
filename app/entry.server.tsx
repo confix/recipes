@@ -35,6 +35,16 @@ export default async function handleRequest(
   }
 
   responseHeaders.set("Content-Type", "text/html");
+  // Recipe text is untrusted, and markdown images would let it make the
+  // reader's browser fetch from any host (a tracking pixel). Set on every
+  // document, because client-side navigation keeps the first page's policy.
+  // Appended, not set: routes may send their own policy (the OAuth consent
+  // page forbids framing), and both must hold.
+  const csp = responseHeaders.get("Content-Security-Policy");
+  responseHeaders.set(
+    "Content-Security-Policy",
+    [csp, "img-src 'self' data:"].filter(Boolean).join("; "),
+  );
   return new Response(body, {
     headers: responseHeaders,
     status: responseStatusCode,

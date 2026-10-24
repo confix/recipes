@@ -1,6 +1,6 @@
 # Recipes v2 — API/MCP-first redesign
 
-Status: phases 1–3 implemented (2026-10-24); phase 4 open.
+Status: phases 1–4 implemented (2026-10-24).
 
 The v1 app (React Router UI, normalized D1 schema, fork tree, share links,
 BYOK credentials) is replaced. The new centre is an API + MCP server that lets
@@ -12,7 +12,7 @@ each user manage their recipes and find them quickly — including "something li
 | --- | --- |
 | Source of truth | Markdown files in R2. Everything else is a derived, rebuildable index. |
 | Baking vs cooking | One recipe type with `kind: bake \| cook`. Bakes may add a weighted `formula` block; baker's % / hydration are derived from it. |
-| UI | Minimal read-only recipe view (phone in the kitchen). No editor. |
+| UI | Minimal: sign-in, search + list, a read-only recipe view for the kitchen, API tokens. No editor. |
 | Users | Multi-user. Each user has a private library; every storage key and index row is scoped by `user_id`. |
 | Validation | valibot (frontmatter and request bodies). |
 | Auth | Accounts via better-auth (kept from v1, social login). MCP uses OAuth (workers-oauth-provider, delegating login to better-auth). REST uses per-user personal access tokens (stored hashed in D1). |
@@ -122,4 +122,11 @@ recipes to markdown under their owner's prefix. The v1 tables stay in
    rank fusion; filters applied to vector hits through D1). Matches below a
    cosine similarity of 0.45 are dropped — an uncalibrated starting value to
    tune against real recipes once deployed.
-4. **Read view**: `/r/:slug` server-rendered page for the signed-in user, baker's % table for bakes.
+4. **Read view** ✅: `/r/:slug` for the signed-in user: formula with baker's %
+   and hydration, the body rendered with micromark (raw HTML escaped, unsafe
+   links dropped — recipe text is untrusted), the cooking log newest first,
+   and a "keep screen on" toggle (Screen Wake Lock). Every page sends
+   `img-src 'self' data:`, so markdown images in a recipe cannot make the
+   reader's browser call other hosts. The home page searches
+   and lists recipes. A file that no longer parses is shown raw, with its
+   problems.

@@ -5,6 +5,7 @@ import {
   withoutLog,
   ingredientText,
   parseLog,
+  parseLogSection,
   parseRecipe,
   slugify,
   summarize,
@@ -85,6 +86,15 @@ describe("log", () => {
       { date: "2026-01-03", rating: 5 },
       { date: "2026-01-04", notes: "ok" },
     ]);
+  });
+
+  it("keeps lines it cannot parse", () => {
+    expect(
+      parseLogSection("## Log\n\n- 2026-01-02 ★5\n- 12 Oct: too salty\n  wrapped\n"),
+    ).toEqual({
+      entries: [{ date: "2026-01-02", rating: 5 }],
+      unrecognized: ["- 12 Oct: too salty", "  wrapped"],
+    });
   });
 
   it("ignores list items outside the log section", () => {

@@ -151,18 +151,34 @@ function logSection(body: string): [number, number] | null {
 }
 
 export function parseLog(body: string): LogEntry[] {
+  return parseLogSection(body).entries;
+}
+
+/**
+ * The log entries, plus the section's lines that are not entries (hand-written
+ * notes, a date in another format, a wrapped line) so a reader can still
+ * show them.
+ */
+export function parseLogSection(body: string): {
+  entries: LogEntry[];
+  unrecognized: string[];
+} {
   const section = logSection(body);
-  if (!section) return [];
+  if (!section) return { entries: [], unrecognized: [] };
   const entries: LogEntry[] = [];
+  const unrecognized: string[] = [];
   for (const line of body.slice(...section).split(/\r?\n/)) {
     const m = LOG_LINE_RE.exec(line.trim());
-    if (!m) continue;
+    if (!m) {
+      if (line.trim()) unrecognized.push(line);
+      continue;
+    }
     const entry: LogEntry = { date: m[1] };
     if (m[2]) entry.rating = Number(m[2]);
     if (m[3]?.trim()) entry.notes = m[3].trim();
     entries.push(entry);
   }
-  return entries;
+  return { entries, unrecognized };
 }
 
 /** The body with the `## Log` section (heading included) removed. */
