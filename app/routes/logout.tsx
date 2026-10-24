@@ -10,7 +10,7 @@ export async function action({ request }: Route.ActionArgs) {
     asResponse: true,
   });
 
-  const headers = new Headers({ Location: "/login" });
+  const headers = new Headers({ Location: "/" });
   // Forward the cookie-clearing header — that's what actually ends the session.
   const setCookie = response.headers.get("set-cookie");
   if (setCookie) headers.append("Set-Cookie", setCookie);

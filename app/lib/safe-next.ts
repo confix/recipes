@@ -15,3 +15,8 @@ export function safeNext(next: string, base: string): string {
   }
   return "/";
 }
+
+/** A link to `path` that keeps `next`, e.g. when moving between /login and /signup. */
+export function withNext(path: string, next: string): string {
+  return next && next !== "/" ? `${path}?next=${encodeURIComponent(next)}` : path;
+}

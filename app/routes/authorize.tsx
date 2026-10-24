@@ -1,6 +1,7 @@
 import { AuthorizationError } from "@cloudflare/workers-oauth-provider";
 import { Form, data, isRouteErrorResponse, redirect } from "react-router";
 
+import { Alert, AuthShell, Button } from "~/components/ui";
 import { requireUser } from "~/lib/auth.server";
 import { oauthHelpersContext } from "~/mcp/oauth-context";
 
@@ -100,12 +101,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       ? error.data
       : "Something went wrong. Start again from the app.";
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-2 p-6">
-      <h1 className="text-2xl font-semibold">Could not connect</h1>
-      <p role="alert" className="text-sm">
-        {message}
-      </p>
-    </main>
+    <AuthShell title="Could not connect">
+      <Alert>{message}</Alert>
+    </AuthShell>
   );
 }
 
@@ -114,48 +112,41 @@ export default function Authorize({ loaderData }: Route.ComponentProps) {
     loaderData;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Connect {clientName}?</h1>
-        {clientDomain ? (
-          <p className="text-sm text-neutral-500">Verified domain: {clientDomain}</p>
+    <AuthShell
+      title={<>Connect {clientName}?</>}
+      subtitle={
+        clientDomain ? (
+          <>Verified domain: <strong className="font-medium">{clientDomain}</strong></>
         ) : (
-          <p className="text-sm text-neutral-500">
-            The app chose this name itself; it is not verified.
-          </p>
-        )}
-        <p className="text-sm">
-          It will be able to read, create, change and delete recipes in the
-          collection of <strong>{email}</strong>.
+          "The app chose this name itself; it is not verified."
+        )
+      }
+    >
+      <div className="flex flex-col gap-4 text-sm">
+        <p className="rounded-xl bg-stone-100 px-4 py-3 dark:bg-stone-800/60">
+          It will be able to <strong>read, create, change and delete</strong> recipes
+          in the collection of <strong>{email}</strong>.
         </p>
-        <p className="text-sm text-neutral-500">
-          You will be sent back to <code>{redirectHost}</code>.
+        <p className="text-stone-600 dark:text-stone-400">
+          You will be sent back to <code className="font-medium">{redirectHost}</code>.
         </p>
         {redirectIsLoopback ? (
-          <p className="text-sm text-amber-700">
-            That is an app on this computer. Only continue if you just started
-            the connection yourself.
-          </p>
+          <Alert tone="warning">
+            That is an app on this computer. Only continue if you just started the
+            connection yourself.
+          </Alert>
         ) : null}
       </div>
 
-      <Form method="post" className="flex gap-2">
+      <Form method="post" className="mt-6 flex gap-3">
         <input type="hidden" name="handle" value={handle} />
-        <button
-          name="intent"
-          value="approve"
-          className="flex-1 rounded bg-neutral-900 px-3 py-2 text-white"
-        >
-          Allow
-        </button>
-        <button
-          name="intent"
-          value="deny"
-          className="flex-1 rounded border border-neutral-300 px-3 py-2"
-        >
+        <Button name="intent" value="deny" variant="secondary" className="flex-1 py-3">
           Deny
-        </button>
+        </Button>
+        <Button name="intent" value="approve" className="flex-1 py-3">
+          Allow
+        </Button>
       </Form>
-    </main>
+    </AuthShell>
   );
 }
