@@ -58,7 +58,12 @@ change the markdown, and save_recipe with the same slug and the etag as
 if_match. Record that the user made a recipe with log_cook rather than by
 editing the Log section.`;
 
-/** valibot schema → the Standard Schema + JSON Schema the MCP SDK expects. */
+/**
+ * valibot schema → the Standard Schema + JSON Schema the MCP SDK expects.
+ * Input schemas must not contain transforms (v.trim, v.toLowerCase, …): JSON
+ * Schema cannot express them, the conversion throws, and tools/list fails —
+ * clients then see a server without tools. Normalize in the handler instead.
+ */
 const input = <T extends v.GenericSchema>(schema: T) => toStandardJsonSchema(schema);
 
 const Slug = v.pipe(SlugSchema, v.description("Recipe slug, e.g. country-sourdough"));
@@ -111,7 +116,6 @@ export function createRecipesMcpServer() {
           query: v.optional(
             v.pipe(
               v.string(),
-              v.trim(),
               v.maxLength(500),
               v.description("Keywords, e.g. 'lentil coconut'"),
             ),
@@ -139,7 +143,7 @@ export function createRecipesMcpServer() {
       run(async () =>
         text(
           await searchRecipes(userId(), {
-            query: args.query,
+            query: args.query?.trim() || undefined,
             kind: args.kind,
             tags: args.tags?.map((t) => t.trim().toLowerCase()).filter(Boolean),
             maxMinutes: args.max_minutes,
@@ -161,8 +165,6 @@ export function createRecipesMcpServer() {
           text: v.optional(
             v.pipe(
               v.string(),
-              v.trim(),
-              v.nonEmpty(),
               v.maxLength(2000),
               v.description("e.g. 'like a focaccia but with rye'"),
             ),
@@ -177,13 +179,14 @@ export function createRecipesMcpServer() {
     },
     async (args) =>
       run(async () => {
-        if (!args.slug === !args.text) {
+        const description = args.text?.trim();
+        if (!args.slug === !description) {
           return { ...text("invalid: Give exactly one of slug or text."), isError: true };
         }
         return text(
           await findSimilar(
             userId(),
-            args.slug ? { slug: args.slug } : { text: args.text! },
+            args.slug ? { slug: args.slug } : { text: description! },
             { kind: args.kind, limit: args.limit },
           ),
         );
