@@ -23,6 +23,15 @@
 	// (@cloudflare/workers-oauth-provider). Create one with
 	// `wrangler kv namespace create OAUTH_KV` and put its id here before deploying.
 	"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "local" }],
+	// Semantic search (docs/design.md, phase 3). Neither service runs
+	// locally; `pnpm dev` leaves them disconnected (search falls back to
+	// keywords) unless started with REMOTE_BINDINGS=1 after `wrangler login`.
+	// Each user's vectors live in their own namespace. Create the index once,
+	// before the first deploy; the metadata index must exist before any vector:
+	//   wrangler vectorize create recipes --dimensions=1024 --metric=cosine
+	//   wrangler vectorize create-metadata-index recipes --property-name=kind --type=string
+	"ai": { "binding": "AI" },
+	"vectorize": [{ "binding": "VECTORIZE", "index_name": "recipes" }],
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",

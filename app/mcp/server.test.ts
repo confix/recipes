@@ -20,6 +20,8 @@ vi.mock("~/recipes/service.server", () => {
   return {
     RecipeError,
     searchRecipes: vi.fn(async () => []),
+    findSimilar: vi.fn(async () => []),
+    MAX_SIMILAR: 49,
     getRecipeSource: vi.fn(),
     saveRecipe: vi.fn(async () => {
       throw new RecipeError("invalid", "Recipe is not valid.", ["kind: bad"]);
@@ -43,7 +45,7 @@ async function connect() {
   await client.start();
 
   let id = 0;
-  const request = (method: string, params: object = {}) =>
+  const request = (method: string, params: Record<string, unknown> = {}) =>
     new Promise<any>((resolve) => {
       pending.set(++id, resolve);
       void client.send({ jsonrpc: "2.0", id, method, params });
@@ -54,7 +56,7 @@ async function connect() {
     clientInfo: { name: "test", version: "1" },
   });
   await client.send({ jsonrpc: "2.0", method: "notifications/initialized" });
-  return (name: string, args: object) =>
+  return (name: string, args: Record<string, unknown>) =>
     request("tools/call", { name, arguments: args });
 }
 
@@ -90,5 +92,24 @@ describe("MCP tools", () => {
     const { result } = await call("save_recipe", { markdown: "x" });
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toBe("invalid: Recipe is not valid.\n- kind: bad");
+  });
+
+  it("find_similar takes exactly one of slug or text", async () => {
+    auth.props = { userId: "user-a" };
+    const call = await connect();
+    for (const args of [{}, { slug: "dal", text: "lentils" }]) {
+      const { result } = await call("find_similar", args);
+      expect(result.isError).toBe(true);
+    }
+    expect(service.findSimilar).not.toHaveBeenCalled();
+
+    await call("find_similar", { text: " like dal ", kind: "cook", limit: 5 });
+    expect(service.findSimilar).toHaveBeenCalledWith(
+      "user-a",
+      { text: "like dal" },
+      { kind: "cook", limit: 5 },
+    );
+    const { result } = await call("find_similar", { slug: "dal", limit: 50 });
+    expect(result.isError).toBe(true);
   });
 });

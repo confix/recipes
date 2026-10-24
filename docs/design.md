@@ -1,6 +1,6 @@
 # Recipes v2 — API/MCP-first redesign
 
-Status: phases 1–2 implemented (2026-10-24); phases 3–4 open.
+Status: phases 1–3 implemented (2026-10-24); phase 4 open.
 
 The v1 app (React Router UI, normalized D1 schema, fork tree, share links,
 BYOK credentials) is replaced. The new centre is an API + MCP server that lets
@@ -35,11 +35,21 @@ each user manage their recipes and find them quickly — including "something li
 - **D1** — users/sessions (better-auth), API tokens, and one row per recipe
   keyed `(user_id, slug)` with the frontmatter fields used for filtering,
   plus an FTS5 table over title / tags / ingredients / body.
-- **Vectorize** — one embedding per recipe, id `<user_id>:<slug>`, with
-  `user_id` as an indexed metadata field so every query is filtered to the
-  caller. One embedding per recipe (Workers AI embedding model) over
-  title + tags + ingredients + summary. Powers `find_similar` and fuzzy
-  natural-language queries.
+- **Vectorize** — one embedding per recipe in a namespace per user (so a
+  query can only see the caller's vectors); id = SHA-256 of user id + slug,
+  since ids are capped at 64 bytes; `kind` is an indexed metadata field. One
+  embedding per recipe (Workers AI embedding model) over
+  title + kind + tags + ingredients + body (minus the log), capped at 4000
+  characters. Powers `find_similar` and natural-language queries.
+- Embedding is best-effort: if Workers AI or Vectorize fail, saves still
+  succeed and search returns keyword results only; reindex fills the gaps.
+  Vectors store a hash of the embedded text, so logging a cook or re-running
+  reindex does not re-embed unchanged recipes.
+- Known limits: two concurrent saves of one recipe can leave the vector one
+  version behind (the window is narrowed, not closed); a vector whose delete
+  failed lingers but is inert, since results always go through the D1 index.
+  A first reindex of a large library embeds one recipe per AI call and may
+  hit Worker subrequest limits; batch it if that becomes real.
 - Reindex is write-through on every save. A `reindex_all` admin path rebuilds
   D1 + Vectorize from R2, so the index schema can change freely.
 
@@ -107,5 +117,9 @@ recipes to markdown under their owner's prefix. The v1 tables stay in
    consent page at `/authorize`. Tool schemas are valibot via
    `@valibot/to-json-schema`. The provider is built per request origin, so its
    resource URL needs no configuration. `find_similar` comes with phase 3.
-3. **Similarity**: Workers AI embeddings + Vectorize, `find_similar`, hybrid ranking.
+3. **Similarity** ✅: `@cf/baai/bge-m3` embeddings in Vectorize, `find_similar`
+   (by slug or text) and hybrid search (FTS5 + vectors merged by reciprocal
+   rank fusion; filters applied to vector hits through D1). Matches below a
+   cosine similarity of 0.45 are dropped — an uncalibrated starting value to
+   tune against real recipes once deployed.
 4. **Read view**: `/r/:slug` server-rendered page for the signed-in user, baker's % table for bakes.

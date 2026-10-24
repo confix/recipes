@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendLogEntry,
+  withoutLog,
   ingredientText,
   parseLog,
   parseRecipe,
@@ -112,6 +113,15 @@ describe("log", () => {
   it("does not mistake a '## Log' inside frontmatter for the section", () => {
     const md = "---\ntitle: X\nkind: cook\n---\nBody\n";
     expect(appendLogEntry(md, { date: "2026-02-02" })).toContain("Body\n\n## Log");
+  });
+});
+
+describe("withoutLog", () => {
+  it("removes only the log section", () => {
+    expect(withoutLog("Intro\n\n## Log\n\n- 2026-01-01\n\n## Notes\n\nkeep\n")).toBe(
+      "Intro\n\n## Notes\n\nkeep\n",
+    );
+    expect(withoutLog("No log here\n")).toBe("No log here\n");
   });
 });
 

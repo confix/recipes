@@ -7,8 +7,10 @@ import { bakersPercentages } from "~/lib/bakers-math";
 import { RECIPE_KINDS, SlugSchema, parseRecipe } from "~/recipes/format";
 import { MAX_SEARCH_LIMIT } from "~/recipes/search-index.server";
 import {
+  MAX_SIMILAR,
   RecipeError,
   deleteRecipe,
+  findSimilar,
   getRecipeSource,
   listTags,
   logCook,
@@ -103,7 +105,7 @@ export function createRecipesMcpServer() {
     {
       title: "Search recipes",
       description:
-        "Keyword search over titles, tags, ingredients and text, with optional filters. Without a query, lists recipes most recently updated first.",
+        "Search by keywords and by meaning at once: 'lentil' and 'something warming for a cold evening' both work. Optional filters narrow the results. Without a query, lists recipes most recently updated first.",
       inputSchema: input(
         v.object({
           query: v.optional(
@@ -116,7 +118,7 @@ export function createRecipesMcpServer() {
           ),
           kind: v.optional(v.picklist(RECIPE_KINDS)),
           tags: v.optional(
-            v.pipe(v.array(v.string()), v.description("Every tag must match")),
+            v.pipe(v.array(v.string()), v.maxLength(10), v.description("Every tag must match")),
           ),
           max_minutes: v.optional(
             v.pipe(
@@ -145,6 +147,47 @@ export function createRecipesMcpServer() {
           }),
         ),
       ),
+  );
+
+  server.registerTool(
+    "find_similar",
+    {
+      title: "Find similar recipes",
+      description:
+        "Recipes most like a given recipe (slug) or a description (text), most similar first, with a similarity score. Give exactly one of slug or text.",
+      inputSchema: input(
+        v.object({
+          slug: v.optional(Slug),
+          text: v.optional(
+            v.pipe(
+              v.string(),
+              v.trim(),
+              v.nonEmpty(),
+              v.maxLength(2000),
+              v.description("e.g. 'like a focaccia but with rye'"),
+            ),
+          ),
+          kind: v.optional(v.picklist(RECIPE_KINDS)),
+          limit: v.optional(
+            v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(MAX_SIMILAR)),
+          ),
+        }),
+      ),
+      annotations: { readOnlyHint: true },
+    },
+    async (args) =>
+      run(async () => {
+        if (!args.slug === !args.text) {
+          return { ...text("invalid: Give exactly one of slug or text."), isError: true };
+        }
+        return text(
+          await findSimilar(
+            userId(),
+            args.slug ? { slug: args.slug } : { text: args.text! },
+            { kind: args.kind, limit: args.limit },
+          ),
+        );
+      }),
   );
 
   server.registerTool(

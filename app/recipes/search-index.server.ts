@@ -143,6 +143,8 @@ export interface SearchHit {
   lastCooked: string | null;
   avgRating: number | null;
   updatedAt: string;
+  /** Cosine similarity, on results that came from semantic search. */
+  similarity?: number;
 }
 
 interface HitRow {
@@ -168,7 +170,7 @@ export const MAX_SEARCH_LIMIT = 100;
  * BM25 with title > tags > ingredients > body; without one, most recently
  * updated first. If requiring every term finds nothing, retries matching any.
  */
-export async function searchRecipes(
+export async function keywordSearch(
   userId: string,
   filters: SearchFilters,
 ): Promise<SearchHit[]> {
@@ -179,10 +181,33 @@ export async function searchRecipes(
   return any && any !== all ? runSearch(userId, filters, any) : hits;
 }
 
+/**
+ * The index rows for `slugs` that pass the filters (the query is ignored), in
+ * no particular order. Used to turn vector matches into search hits.
+ */
+export async function hitsForSlugs(
+  userId: string,
+  slugs: string[],
+  filters: Omit<SearchFilters, "query" | "limit"> = {},
+): Promise<SearchHit[]> {
+  if (slugs.length === 0) return [];
+  return runSearch(userId, { ...filters, limit: MAX_SEARCH_LIMIT }, null, slugs);
+}
+
+/** The etag the index row was built from, or null if there is no row. */
+export async function indexedEtag(userId: string, slug: string) {
+  return env.DB.prepare(
+    `SELECT etag FROM recipe_index WHERE user_id = ? AND slug = ?`,
+  )
+    .bind(userId, slug)
+    .first<string>("etag");
+}
+
 async function runSearch(
   userId: string,
   filters: SearchFilters,
   match: string | null,
+  onlySlugs?: string[],
 ): Promise<SearchHit[]> {
   const where = ["r.user_id = ?"];
   const params: unknown[] = [userId];
@@ -190,6 +215,10 @@ async function runSearch(
   if (match) {
     where.push("recipe_fts MATCH ?");
     params.push(match);
+  }
+  if (onlySlugs) {
+    where.push(`r.slug IN (${onlySlugs.map(() => "?").join(", ")})`);
+    params.push(...onlySlugs);
   }
   if (filters.kind) {
     where.push("r.kind = ?");

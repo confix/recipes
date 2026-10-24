@@ -3,6 +3,8 @@ import { bakersPercentages, type BakersMath } from "~/lib/bakers-math";
 import {
   type Frontmatter,
   type LogEntry,
+  type ParsedRecipe,
+  type RecipeKind,
   appendLogEntry,
   isValidSlug,
   parseRecipe,
@@ -11,12 +13,24 @@ import {
 import {
   type SearchFilters,
   type SearchHit,
+  MAX_SEARCH_LIMIT,
+  hitsForSlugs,
   indexRecipe,
+  indexedEtag,
   indexedSlugs,
+  keywordSearch,
   listTags as listIndexedTags,
-  searchRecipes as searchIndex,
   unindexRecipe,
 } from "./search-index.server";
+import { embeddingText, reciprocalRankFusion, sha256Hex } from "./semantic";
+import {
+  MAX_TOP_K,
+  deleteRecipeVector,
+  embed,
+  nearestRecipes,
+  storedVector,
+  upsertRecipeVector,
+} from "./semantic.server";
 import {
   deleteRecipeFile,
   getRecipeFile,
@@ -33,15 +47,79 @@ import {
  *
  * Writes go to R2 first, then the index. If indexing fails the file is still
  * safe, and reindexAll() repairs the index from R2.
+ *
+ * Search has two halves: keywords (D1 FTS5) and meaning (embeddings in
+ * Vectorize). The semantic half is best-effort: when it is unavailable,
+ * saves still succeed and search returns keyword results alone.
  */
 
 export class RecipeError extends Error {
   constructor(
-    readonly code: "not_found" | "invalid" | "conflict" | "precondition_failed",
+    readonly code:
+      | "not_found"
+      | "invalid"
+      | "conflict"
+      | "precondition_failed"
+      | "unavailable",
     message: string,
     readonly issues?: string[],
   ) {
     super(message);
+  }
+}
+
+async function index(
+  userId: string,
+  slug: string,
+  recipe: ParsedRecipe,
+  file: { etag: string; uploaded: Date },
+) {
+  await indexRecipe(userId, slug, recipe, file);
+  try {
+    await syncVector(userId, slug, recipe, file.etag);
+  } catch (error) {
+    console.warn(`No embedding for ${slug}; keyword search only.`, error);
+  }
+}
+
+/**
+ * Brings the recipe's vector up to date. Skips the embedding call when the
+ * embedded text is unchanged (logging a cook, re-running reindex).
+ *
+ * Concurrent saves can race: embedding is slow, so an older save could upsert
+ * after a newer one. Re-checking that the index row still holds this version
+ * right before the upsert narrows that window to milliseconds; it does not
+ * close it, and a reindex repairs what slips through.
+ */
+async function syncVector(
+  userId: string,
+  slug: string,
+  recipe: ParsedRecipe,
+  etag: string,
+) {
+  const isCurrent = async () => (await indexedEtag(userId, slug)) === etag;
+  if (!(await isCurrent())) return;
+
+  const text = embeddingText(recipe);
+  const hash = await sha256Hex(text);
+  if ((await storedVector(userId, slug))?.hash === hash) return;
+
+  const values = await embed(text);
+  if (!(await isCurrent())) return;
+  await upsertRecipeVector(userId, values, { slug, kind: recipe.frontmatter.kind, hash });
+}
+
+/**
+ * The vector delete is best-effort like the rest of semantic search, so
+ * deleting works while Vectorize is unreachable. A vector left behind is
+ * inert: search and find_similar only return recipes that have an index row.
+ */
+async function unindex(userId: string, slug: string) {
+  await unindexRecipe(userId, slug);
+  try {
+    await deleteRecipeVector(userId, slug);
+  } catch (error) {
+    console.warn(`Could not delete the vector for ${slug}.`, error);
   }
 }
 
@@ -183,7 +261,7 @@ export async function saveRecipe(
     ]);
   }
 
-  await indexRecipe(userId, slug, recipe, file);
+  await index(userId, slug, recipe, file);
   return { slug, etag: file.etag, created };
 }
 
@@ -193,7 +271,7 @@ export async function deleteRecipe(userId: string, slug: string) {
     throw new RecipeError("not_found", `No recipe "${slug}".`);
   }
   await deleteRecipeFile(userId, slug);
-  await unindexRecipe(userId, slug);
+  await unindex(userId, slug);
 }
 
 /**
@@ -215,7 +293,7 @@ export async function logCook(
       ifMatch: current.etag,
     });
     if (file) {
-      await indexRecipe(userId, slug, recipe, file);
+      await index(userId, slug, recipe, file);
       return { etag: file.etag, entry };
     }
   }
@@ -225,11 +303,115 @@ export async function logCook(
   );
 }
 
-export function searchRecipes(
+/**
+ * How many keyword candidates hybrid search considers. The semantic half is
+ * capped by Vectorize at MAX_TOP_K; filters (tags, max_minutes) applied after
+ * the vector query can leave fewer.
+ */
+const CANDIDATES = 50;
+
+/** Semantic hits that pass the filters, ordered by similarity. */
+async function semanticHits(
+  userId: string,
+  vector: number[],
+  filters: Omit<SearchFilters, "query" | "limit">,
+  exclude?: string,
+): Promise<SearchHit[]> {
+  const matches = (
+    await nearestRecipes(userId, vector, { kind: filters.kind, topK: MAX_TOP_K })
+  ).filter((m) => m.slug !== exclude);
+  const hits = new Map(
+    (await hitsForSlugs(userId, matches.map((m) => m.slug), filters)).map((h) => [
+      h.slug,
+      h,
+    ]),
+  );
+  return matches.flatMap((m) => {
+    const hit = hits.get(m.slug);
+    return hit ? [{ ...hit, similarity: m.similarity }] : [];
+  });
+}
+
+function clampLimit(limit: number | undefined) {
+  return Math.min(Math.max(limit ?? 20, 1), MAX_SEARCH_LIMIT);
+}
+
+/**
+ * With a query: keyword and semantic results, merged by reciprocal rank
+ * fusion, so "lentil" finds the dal by word and "something warming with
+ * pulses" finds it by meaning. Without a query: newest first.
+ */
+export async function searchRecipes(
   userId: string,
   filters: SearchFilters,
 ): Promise<SearchHit[]> {
-  return searchIndex(userId, filters);
+  const limit = clampLimit(filters.limit);
+  if (!filters.query) return keywordSearch(userId, { ...filters, limit });
+
+  const { query, limit: _, ...rest } = filters;
+  const [keyword, semantic] = await Promise.all([
+    keywordSearch(userId, { ...filters, limit: CANDIDATES }),
+    embed(query)
+      .then((vector) => semanticHits(userId, vector, rest))
+      .catch((error) => {
+        console.warn("Semantic search unavailable; keyword results only.", error);
+        return [] as SearchHit[];
+      }),
+  ]);
+
+  const bySlug = new Map<string, SearchHit>();
+  for (const hit of [...keyword, ...semantic]) {
+    bySlug.set(hit.slug, { ...bySlug.get(hit.slug), ...hit });
+  }
+  return reciprocalRankFusion([keyword.map((h) => h.slug), semantic.map((h) => h.slug)])
+    .slice(0, limit)
+    .map((slug) => bySlug.get(slug)!);
+}
+
+/** Vectorize returns at most MAX_TOP_K matches, one of which may be the recipe itself. */
+export const MAX_SIMILAR = MAX_TOP_K - 1;
+
+/**
+ * Recipes most like a given recipe (by its stored embedding) or a free-text
+ * description, most similar first.
+ */
+export async function findSimilar(
+  userId: string,
+  target: { slug: string } | { text: string },
+  filters: { kind?: RecipeKind; limit?: number } = {},
+): Promise<SearchHit[]> {
+  const unavailable = (error: unknown): never => {
+    console.warn("Similarity search unavailable.", error);
+    throw new RecipeError("unavailable", "Similarity search is unavailable right now.");
+  };
+
+  let vector: number[];
+  if ("slug" in target) {
+    assertSlug(target.slug);
+    // The index row, not the vector, decides whether the recipe exists: a
+    // vector can outlive its recipe if a delete half-failed.
+    if (!(await indexedEtag(userId, target.slug))) {
+      throw new RecipeError("not_found", `No recipe "${target.slug}".`);
+    }
+    const stored = await storedVector(userId, target.slug).catch(unavailable);
+    if (!stored) {
+      throw new RecipeError(
+        "unavailable",
+        "This recipe has no embedding yet. Try again shortly, or run a reindex.",
+      );
+    }
+    vector = stored.values;
+  } else {
+    vector = await embed(target.text).catch(unavailable);
+  }
+
+  const hits = await semanticHits(
+    userId,
+    vector,
+    { kind: filters.kind },
+    "slug" in target ? target.slug : undefined,
+  ).catch(unavailable);
+  return hits.slice(0, Math.min(clampLimit(filters.limit), MAX_SIMILAR));
 }
 
 export function listTags(userId: string) {
@@ -273,14 +455,14 @@ export async function reindexAll(userId: string) {
       invalid.push({ slug, issues: parsed.issues });
       return;
     }
-    await indexRecipe(userId, slug, parsed.recipe, file);
+    await index(userId, slug, parsed.recipe, file);
     live.add(slug);
   });
 
   let removed = 0;
   for (const slug of await indexedSlugs(userId)) {
     if (!live.has(slug)) {
-      await unindexRecipe(userId, slug);
+      await unindex(userId, slug);
       removed++;
     }
   }

@@ -165,6 +165,14 @@ export function parseLog(body: string): LogEntry[] {
   return entries;
 }
 
+/** The body with the `## Log` section (heading included) removed. */
+export function withoutLog(body: string): string {
+  const heading = LOG_HEADING_RE.exec(body);
+  const section = logSection(body);
+  if (!heading || !section) return body;
+  return body.slice(0, heading.index) + body.slice(section[1]);
+}
+
 export function formatLogLine(entry: LogEntry): string {
   let line = `- ${entry.date}`;
   if (entry.rating) line += ` ★${entry.rating}`;

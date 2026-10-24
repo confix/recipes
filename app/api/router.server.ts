@@ -1,11 +1,13 @@
 import * as v from "valibot";
 
 import { getSessionUser } from "~/lib/auth.server";
-import { RECIPE_KINDS } from "~/recipes/format";
+import { RECIPE_KINDS, SlugSchema } from "~/recipes/format";
 import { MAX_SEARCH_LIMIT } from "~/recipes/search-index.server";
 import {
+  MAX_SIMILAR,
   RecipeError,
   deleteRecipe,
+  findSimilar,
   getRecipe,
   getRecipeSource,
   listTags,
@@ -28,6 +30,7 @@ import { createToken, listTokens, revokeToken, verifyToken } from "./tokens.serv
  *   PUT    /api/recipes/:slug            create or replace; If-Match → 412 on mismatch
  *   DELETE /api/recipes/:slug
  *   POST   /api/recipes/:slug/log        { date?, rating?, notes? }
+ *   GET    /api/similar?slug=|text=&kind=&limit=   most similar recipes
  *   GET    /api/tags
  *   POST   /api/reindex                  rebuild own index from R2
  *   GET    /api/tokens                   session only
@@ -144,7 +147,10 @@ function parseIfMatch(request: Request) {
 const SearchParamsSchema = v.object({
   q: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(500))),
   kind: v.optional(v.picklist(RECIPE_KINDS)),
-  tags: v.array(v.pipe(v.string(), v.trim(), v.toLowerCase(), v.nonEmpty())),
+  tags: v.pipe(
+    v.array(v.pipe(v.string(), v.trim(), v.toLowerCase(), v.nonEmpty())),
+    v.maxLength(10),
+  ),
   max_minutes: v.optional(
     v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(0)),
   ),
@@ -156,6 +162,15 @@ const SearchParamsSchema = v.object({
       v.minValue(1),
       v.maxValue(MAX_SEARCH_LIMIT),
     ),
+  ),
+});
+
+const SimilarParamsSchema = v.object({
+  slug: v.optional(SlugSchema),
+  text: v.optional(v.pipe(v.string(), v.trim(), v.nonEmpty(), v.maxLength(2000))),
+  kind: v.optional(v.picklist(RECIPE_KINDS)),
+  limit: v.optional(
+    v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(1), v.maxValue(MAX_SIMILAR)),
   ),
 });
 
@@ -253,6 +268,25 @@ async function route(request: Request, caller: Caller, path: string[]) {
     }
   }
 
+  if (path.length === 1 && path[0] === "similar" && method === "GET") {
+    const params = new URL(request.url).searchParams;
+    const input = validate(SimilarParamsSchema, {
+      slug: params.get("slug") || undefined,
+      text: params.get("text") || undefined,
+      kind: params.get("kind") || undefined,
+      limit: params.get("limit") || undefined,
+    });
+    if (!input.slug === !input.text) {
+      throw new HttpError(422, "invalid", "Give exactly one of slug or text.");
+    }
+    const results = await findSimilar(
+      userId,
+      input.slug ? { slug: input.slug } : { text: input.text! },
+      { kind: input.kind, limit: input.limit },
+    );
+    return json({ results });
+  }
+
   if (path.length === 1 && path[0] === "tags" && method === "GET") {
     return json({ tags: await listTags(userId) });
   }
@@ -297,6 +331,7 @@ const RECIPE_ERROR_STATUS = {
   invalid: 422,
   conflict: 409,
   precondition_failed: 412,
+  unavailable: 503,
 } as const;
 
 export async function handleApi(request: Request): Promise<Response> {

@@ -1,8 +1,9 @@
 # Recipes
 
-An MCP server and REST API for managing recipes and finding them quickly.
-Recipes are markdown files with YAML frontmatter, stored per user in R2; D1
-holds a rebuildable search index. Design and roadmap: [docs/design.md](docs/design.md).
+An MCP server and REST API for managing recipes and finding them quickly —
+by keyword or by meaning ("something like this, but vegetarian"). Recipes are
+markdown files with YAML frontmatter, stored per user in R2; D1 (full-text)
+and Vectorize (embeddings) hold rebuildable search indexes. Design and roadmap: [docs/design.md](docs/design.md).
 
 ## Recipe format
 
@@ -40,12 +41,21 @@ pnpm dev
 Sign up at `/login`, then create an API token on the home page, or point an
 MCP client at `http://localhost:5173/mcp`.
 
-Before the first deploy, create the KV namespace for OAuth state and put its
-id into `wrangler.jsonc`:
+Semantic search needs Workers AI and Vectorize, which only exist remotely.
+Plain `pnpm dev` runs without them and search falls back to keywords; after
+`wrangler login`, `REMOTE_BINDINGS=1 pnpm dev` connects the real services.
+
+Before the first deploy, create the KV namespace for OAuth state (put its id
+into `wrangler.jsonc`) and the vector index:
 
 ```sh
 pnpm exec wrangler kv namespace create OAUTH_KV
+pnpm exec wrangler vectorize create recipes --dimensions=1024 --metric=cosine
+pnpm exec wrangler vectorize create-metadata-index recipes --property-name=kind --type=string
 ```
+
+After deploying, run `POST /api/reindex` once per user to embed existing
+recipes.
 
 ```sh
 pnpm test        # unit tests
@@ -62,8 +72,8 @@ OAuth: the client registers itself, you sign in and approve it on
 claude mcp add --transport http recipes https://<your-worker>/mcp
 ```
 
-Tools: `search_recipes`, `get_recipe`, `save_recipe`, `log_cook`,
-`list_tags`, `delete_recipe`. The server's instructions teach the client the
+Tools: `search_recipes`, `find_similar`, `get_recipe`, `save_recipe`,
+`log_cook`, `list_tags`, `delete_recipe`. The server's instructions teach the client the
 recipe format.
 
 ## API
@@ -73,7 +83,8 @@ from the home page, not an MCP OAuth token).
 
 | Method | Path | |
 | --- | --- | --- |
-| `GET` | `/api/recipes?q=&kind=&tag=&max_minutes=&limit=` | Search. Without `q`: most recently updated first. |
+| `GET` | `/api/recipes?q=&kind=&tag=&max_minutes=&limit=` | Search by keywords and meaning. Without `q`: most recently updated first. |
+| `GET` | `/api/similar?slug=` or `?text=` (`&kind=&limit=`) | Most similar recipes, with a `similarity` score. 503 while embeddings are unavailable. |
 | `POST` | `/api/recipes` | Create from a markdown body (or JSON `{ markdown }`). The slug comes from the title. |
 | `GET` | `/api/recipes/:slug` | JSON with parsed frontmatter, log and baker's math; raw file with `Accept: text/markdown`. |
 | `PUT` | `/api/recipes/:slug` | Create or replace. Send `If-Match: <etag>` to avoid overwriting concurrent edits. |
