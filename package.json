@@ -9,6 +9,7 @@
     "deploy": "pnpm build && wrangler deploy",
     "preview": "pnpm build && vite preview",
     "cf-typegen": "wrangler types",
+    "test": "vitest run",
     "postinstall": "wrangler types"
   },
   "dependencies": {
@@ -16,10 +17,10 @@
     "drizzle-orm": "0.45.2",
     "isbot": "^5.1.36",
     "react": "^19.2.7",
-    "react-aria-components": "^1.19.0",
     "react-dom": "^19.2.7",
     "react-router": "8.2.0",
-    "zod": "^4.4.3"
+    "valibot": "^1.5.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.45.0",
@@ -32,6 +33,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vite": "^8.0.3",
+    "vitest": "^5.0.5",
     "wrangler": "^4.111.0"
   },
   "packageManager": "pnpm@11.9.0"

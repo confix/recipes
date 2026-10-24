@@ -1,79 +1,72 @@
-# Welcome to React Router!
+# Recipes
 
-A modern, production-ready template for building full-stack React applications using React Router.
+An API (and soon MCP server) for managing recipes and finding them quickly.
+Recipes are markdown files with YAML frontmatter, stored per user in R2; D1
+holds a rebuildable search index. Design and roadmap: [docs/design.md](docs/design.md).
 
-## Features
+## Recipe format
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+```markdown
+---
+title: Weeknight Dal
+kind: cook                 # cook | bake
+tags: [indian, vegetarian]
+time: { total: 30 }        # minutes; also `active`
+---
 
-## Getting Started
+Comforting red lentil dal.
 
-### Installation
+## Ingredients
 
-Install the dependencies:
+- 200 g red lentils
 
-```bash
-pnpm install
+## Log
+
+- 2026-10-12 ★4 — more ginger next time
 ```
 
-### Development
+Bakes can add a `formula` (grams + role per ingredient) for derived baker's
+percentages and hydration; see docs/design.md.
 
-Start the development server with HMR:
+## Development
 
-```bash
+```sh
+pnpm install
+echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" > .dev.vars
+pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
 
-Your application will be available at `http://localhost:5173`.
-
-## Previewing the Production Build
-
-Preview the production build locally:
-
-```bash
-pnpm preview
-```
-
-## Building for Production
-
-Create a production build:
-
-```bash
-pnpm build
-```
-
-## Deployment
-
-Deployment is done using the Wrangler CLI.
-
-To build and deploy directly to production:
+Sign up at `/login`, then create an API token on the home page.
 
 ```sh
-pnpm deploy
+pnpm test        # unit tests
+pnpm typecheck
 ```
 
-To deploy a preview URL:
+## API
+
+All endpoints take `Authorization: Bearer <token>`.
+
+| Method | Path | |
+| --- | --- | --- |
+| `GET` | `/api/recipes?q=&kind=&tag=&max_minutes=&limit=` | Search. Without `q`: most recently updated first. |
+| `POST` | `/api/recipes` | Create from a markdown body (or JSON `{ markdown }`). The slug comes from the title. |
+| `GET` | `/api/recipes/:slug` | JSON with parsed frontmatter, log and baker's math; raw file with `Accept: text/markdown`. |
+| `PUT` | `/api/recipes/:slug` | Create or replace. Send `If-Match: <etag>` to avoid overwriting concurrent edits. |
+| `DELETE` | `/api/recipes/:slug` | |
+| `POST` | `/api/recipes/:slug/log` | `{ date?, rating?, notes? }` appends to `## Log`. |
+| `GET` | `/api/tags` | Tags with counts. |
+| `POST` | `/api/reindex` | Rebuilds your index from R2 and reports files that don't parse. |
 
 ```sh
-npx wrangler versions upload
+curl -X POST localhost:5173/api/recipes -H "Authorization: Bearer $TOKEN" --data-binary @dal.md
+curl "localhost:5173/api/recipes?q=lentil&kind=cook" -H "Authorization: Bearer $TOKEN"
 ```
 
-You can then promote a version to production after verification or roll it out progressively.
+## Migrating v1 data
 
-```sh
-npx wrangler versions deploy
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+`node scripts/export-v1.ts [--remote] --upload` converts the v1 tables to
+markdown, uploads them to R2, and asks each user to `POST /api/reindex`. The
+v1 tables stay in the schema (`app/db/schema/legacy.ts`) until the export has
+run.
