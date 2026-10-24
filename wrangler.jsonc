@@ -9,27 +9,29 @@
 	// `assets.directory` is intentionally absent: the Cloudflare Vite plugin
 	// populates it from the client build output and emits a flattened
 	// build/server/wrangler.json at build time.
+	//
+	// No resource ids anywhere: `wrangler deploy` connects D1 and R2 by name
+	// and creates them if missing, and creates the KV namespace on the first
+	// deploy and reuses it afterwards. scripts/provision.sh covers what deploy
+	// does not (Vectorize, and D1 before migrations run). See README "Deploying".
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "recipes-db",
-			"database_id": "local",
 			// Must match `out` in drizzle.config.ts. drizzle-kit generates the
 			// SQL; wrangler owns applying it.
 			"migrations_dir": "drizzle"
 		}
 	],
 	// OAuth clients, grants and tokens for the MCP endpoint
-	// (@cloudflare/workers-oauth-provider). Create one with
-	// `wrangler kv namespace create OAUTH_KV` and put its id here before deploying.
-	"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "local" }],
+	// (@cloudflare/workers-oauth-provider).
+	"kv_namespaces": [{ "binding": "OAUTH_KV" }],
 	// Semantic search (docs/design.md, phase 3). Neither service runs
 	// locally; `pnpm dev` leaves them disconnected (search falls back to
 	// keywords) unless started with REMOTE_BINDINGS=1 after `wrangler login`.
-	// Each user's vectors live in their own namespace. Create the index once,
-	// before the first deploy; the metadata index must exist before any vector:
-	//   wrangler vectorize create recipes --dimensions=1024 --metric=cosine
-	//   wrangler vectorize create-metadata-index recipes --property-name=kind --type=string
+	// Each user's vectors live in their own namespace. The index (1024
+	// dimensions, cosine, metadata index on `kind`) is created by
+	// scripts/provision.sh.
 	"ai": { "binding": "AI" },
 	"vectorize": [{ "binding": "VECTORIZE", "index_name": "recipes" }],
 	"r2_buckets": [

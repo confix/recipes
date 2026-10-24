@@ -46,22 +46,40 @@ Semantic search needs Workers AI and Vectorize, which only exist remotely.
 Plain `pnpm dev` runs without them and search falls back to keywords; after
 `wrangler login`, `REMOTE_BINDINGS=1 pnpm dev` connects the real services.
 
-Before the first deploy, create the KV namespace for OAuth state (put its id
-into `wrangler.jsonc`) and the vector index:
-
-```sh
-pnpm exec wrangler kv namespace create OAUTH_KV
-pnpm exec wrangler vectorize create recipes --dimensions=1024 --metric=cosine
-pnpm exec wrangler vectorize create-metadata-index recipes --property-name=kind --type=string
-```
-
-After deploying, run `POST /api/reindex` once per user to embed existing
-recipes.
-
 ```sh
 pnpm test        # unit tests
 pnpm typecheck
 ```
+
+## Deploying
+
+GitHub Actions (`.github/workflows/ci.yml`) typechecks, tests and builds every
+push and pull request, and deploys every push to `main`:
+
+1. `scripts/provision.sh` creates what `wrangler deploy` does not: the D1
+   database (migrations need it first) and the Vectorize index with its
+   metadata index on `kind`. It is idempotent.
+2. D1 migrations are applied.
+3. `wrangler deploy` uploads the Worker with `BETTER_AUTH_SECRET`. It connects
+   to the R2 bucket by name and creates it if missing, and creates the OAuth KV
+   namespace on the first deploy. `wrangler.jsonc` holds no resource ids.
+
+One-time setup, in the GitHub repository's settings (Secrets and variables →
+Actions, or the `production` environment):
+
+| Secret | Value |
+| --- | --- |
+| `CLOUDFLARE_ACCOUNT_ID` | Your account id (dashboard → Workers & Pages, right-hand side). |
+| `CLOUDFLARE_API_TOKEN` | An API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit** and **Account → Vectorize → Edit**, limited to that account. |
+| `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Changing it signs everyone out. |
+
+The first deploy prints the Worker's `*.workers.dev` URL. Sign up there; MCP
+clients connect to `<url>/mcp`. Run `POST /api/reindex` once per user if
+recipes were added while embeddings were unavailable.
+
+To deploy by hand instead: `wrangler login`, `scripts/provision.sh`,
+`pnpm exec wrangler d1 migrations apply recipes-db --remote`,
+`pnpm exec wrangler secret put BETTER_AUTH_SECRET` (first time), `pnpm run deploy`.
 
 ## MCP
 
