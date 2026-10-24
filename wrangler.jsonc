@@ -10,10 +10,10 @@
 	// populates it from the client build output and emits a flattened
 	// build/server/wrangler.json at build time.
 	//
-	// No resource ids anywhere: `wrangler deploy` connects D1 and R2 by name
-	// and creates them if missing, and creates the KV namespace on the first
-	// deploy and reuses it afterwards. scripts/provision.sh covers what deploy
-	// does not (Vectorize, and D1 before migrations run). See README "Deploying".
+	// No resource ids: scripts/provision.sh creates or finds D1, KV and
+	// Vectorize by name, scripts/deploy.sh pins the KV id into the generated
+	// build config, and `wrangler deploy` connects D1 and R2 by name. Any
+	// account deploys this file unchanged. See README "Deploying".
 	"d1_databases": [
 		{
 			"binding": "DB",
