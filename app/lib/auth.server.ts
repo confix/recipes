@@ -1,8 +1,10 @@
 import { env } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { getDb, schema } from "~/db";
+import { isEmailAllowed } from "~/lib/allowed-emails";
 
 /**
  * Build the auth instance for the current request.
@@ -35,6 +37,21 @@ export function getAuth(request?: Request) {
     // URLs, and production all work without a per-environment host var.
     baseURL: request ? new URL(request.url).origin : undefined,
     emailAndPassword: { enabled: true },
+    databaseHooks: {
+      user: {
+        create: {
+          // Every way of creating an account ends here, so this is the one
+          // place sign-up is restricted. See app/lib/allowed-emails.ts.
+          async before(user) {
+            if (!isEmailAllowed(user.email, env.ALLOWED_EMAILS)) {
+              throw new APIError("FORBIDDEN", {
+                message: "Sign-up is invite-only, and this email is not on the list.",
+              });
+            }
+          },
+        },
+      },
+    },
   });
 }
 
@@ -53,7 +70,8 @@ export async function getSessionUser(request: Request) {
 export async function requireUser(request: Request) {
   const user = await getSessionUser(request);
   if (!user) {
-    const next = new URL(request.url).pathname;
+    const { pathname, search } = new URL(request.url);
+    const next = pathname + search;
     throw new Response(null, {
       status: 302,
       headers: { Location: `/login?next=${encodeURIComponent(next)}` },

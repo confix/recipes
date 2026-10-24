@@ -12,3 +12,6 @@
 .wrangler
 .dev.vars*
 worker-configuration.d.ts
+
+# v1 export output (scripts/export-v1.ts)
+/export/

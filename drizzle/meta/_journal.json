@@ -8,6 +8,20 @@
       "when": 1784231568080,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792864460098,
+      "tag": "0001_recipe_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792864469296,
+      "tag": "0002_recipe_fts",
+      "breakpoints": true
     }
   ]
 }

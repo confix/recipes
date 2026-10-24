@@ -13,3 +13,18 @@ body {
     color-scheme: dark;
   }
 }
+
+/* Rendered recipe markdown (app/routes/recipe.tsx). */
+.recipe-body {
+  & h1, & h2 { @apply mt-6 mb-2 text-xl font-semibold; }
+  & h3, & h4 { @apply mt-4 mb-1 text-lg font-semibold; }
+  & p { @apply my-3; }
+  & ul { @apply my-3 list-disc pl-6; }
+  & ol { @apply my-3 list-decimal pl-6; }
+  & li { @apply my-1; }
+  & a { @apply underline; }
+  /* Block + overflow so a wide table scrolls instead of widening the page. */
+  & table { @apply my-3 block max-w-full overflow-x-auto text-left; }
+  & td, & th { @apply border-t border-neutral-200 py-1 pr-2 dark:border-neutral-800; }
+  & blockquote { @apply my-3 border-l-4 border-neutral-300 pl-4 text-neutral-600 dark:text-neutral-400; }
+}
