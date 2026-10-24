@@ -53,7 +53,8 @@ export async function getSessionUser(request: Request) {
 export async function requireUser(request: Request) {
   const user = await getSessionUser(request);
   if (!user) {
-    const next = new URL(request.url).pathname;
+    const { pathname, search } = new URL(request.url);
+    const next = pathname + search;
     throw new Response(null, {
       status: 302,
       headers: { Location: `/login?next=${encodeURIComponent(next)}` },

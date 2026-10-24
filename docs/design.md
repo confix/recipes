@@ -1,6 +1,6 @@
 # Recipes v2 — API/MCP-first redesign
 
-Status: Phase 1 implemented (2026-10-24); phases 2–4 open.
+Status: phases 1–2 implemented (2026-10-24); phases 3–4 open.
 
 The v1 app (React Router UI, normalized D1 schema, fork tree, share links,
 BYOK credentials) is replaced. The new centre is an API + MCP server that lets
@@ -21,7 +21,7 @@ each user manage their recipes and find them quickly — including "something li
 
 ```
             ┌──────────── Worker ─────────────┐
- MCP  ───▶  │ /mcp   (McpAgent, OAuth)        │
+ MCP  ───▶  │ /mcp   (stateless MCP, OAuth)   │
  REST ───▶  │ /api/* (bearer token)           │──▶ service layer
  Web  ───▶  │ /r/:slug (read-only HTML)       │
             └─────────────────────────────────┘
@@ -102,6 +102,10 @@ recipes to markdown under their owner's prefix. The v1 tables stay in
 ## Phases
 
 1. **Core** ✅: recipe format + valibot schema, user-scoped R2 storage, D1 index + FTS5, personal access tokens (incl. a minimal page to issue them), REST API, export script from v1.
-2. **MCP**: McpAgent + OAuth, tools above.
+2. **MCP** ✅: stateless `createMcpHandler` (agents, MCP SDK v2; `McpAgent` is
+   deprecated) behind `OAuthProvider` with dynamic client registration and a
+   consent page at `/authorize`. Tool schemas are valibot via
+   `@valibot/to-json-schema`. The provider is built per request origin, so its
+   resource URL needs no configuration. `find_similar` comes with phase 3.
 3. **Similarity**: Workers AI embeddings + Vectorize, `find_similar`, hybrid ranking.
 4. **Read view**: `/r/:slug` server-rendered page for the signed-in user, baker's % table for bakes.

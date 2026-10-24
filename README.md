@@ -1,6 +1,6 @@
 # Recipes
 
-An API (and soon MCP server) for managing recipes and finding them quickly.
+An MCP server and REST API for managing recipes and finding them quickly.
 Recipes are markdown files with YAML frontmatter, stored per user in R2; D1
 holds a rebuildable search index. Design and roadmap: [docs/design.md](docs/design.md).
 
@@ -37,16 +37,39 @@ pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
 
-Sign up at `/login`, then create an API token on the home page.
+Sign up at `/login`, then create an API token on the home page, or point an
+MCP client at `http://localhost:5173/mcp`.
+
+Before the first deploy, create the KV namespace for OAuth state and put its
+id into `wrangler.jsonc`:
+
+```sh
+pnpm exec wrangler kv namespace create OAUTH_KV
+```
 
 ```sh
 pnpm test        # unit tests
 pnpm typecheck
 ```
 
+## MCP
+
+The MCP server lives at `/mcp` (Streamable HTTP) and signs clients in with
+OAuth: the client registers itself, you sign in and approve it on
+`/authorize`, and it only ever sees your own recipes.
+
+```sh
+claude mcp add --transport http recipes https://<your-worker>/mcp
+```
+
+Tools: `search_recipes`, `get_recipe`, `save_recipe`, `log_cook`,
+`list_tags`, `delete_recipe`. The server's instructions teach the client the
+recipe format.
+
 ## API
 
-All endpoints take `Authorization: Bearer <token>`.
+All endpoints take `Authorization: Bearer <token>` (a personal access token
+from the home page, not an MCP OAuth token).
 
 | Method | Path | |
 | --- | --- | --- |

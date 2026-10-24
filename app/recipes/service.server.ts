@@ -55,6 +55,9 @@ export interface Recipe {
   bakers: BakersMath | null;
 }
 
+/** Recipes are text; anything larger is a mistake (or abuse). */
+export const MAX_RECIPE_BYTES = 512 * 1024;
+
 function parseOrThrow(markdown: string) {
   const parsed = parseRecipe(markdown);
   if (!parsed.ok) {
@@ -122,6 +125,11 @@ export async function saveRecipe(
   markdown: string,
   options: { slug?: string; ifMatch?: string } = {},
 ): Promise<{ slug: string; etag: string; created: boolean }> {
+  if (new TextEncoder().encode(markdown).byteLength > MAX_RECIPE_BYTES) {
+    throw new RecipeError("invalid", "Recipe is too large.", [
+      `markdown: must be at most ${MAX_RECIPE_BYTES / 1024} KiB`,
+    ]);
+  }
   const recipe = parseOrThrow(markdown);
 
   if (options.slug !== undefined && !isValidSlug(options.slug)) {

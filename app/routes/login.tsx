@@ -1,6 +1,7 @@
 import { Form, Link, redirect, useNavigation, useSearchParams } from "react-router";
 
 import { getAuth, getSessionUser } from "~/lib/auth.server";
+import { safeNext } from "~/lib/safe-next";
 
 import type { Route } from "./+types/login";
 
@@ -76,7 +77,7 @@ export async function action({ request }: Route.ActionArgs) {
     const headers = new Headers({ "Set-Cookie": setCookie });
     // Only same-site relative redirects — `next` is user-controlled and would
     // otherwise be an open redirect.
-    headers.set("Location", next.startsWith("/") && !next.startsWith("//") ? next : "/");
+    headers.set("Location", safeNext(next, request.url));
     return new Response(null, { status: 302, headers });
   } catch (error) {
     const message =

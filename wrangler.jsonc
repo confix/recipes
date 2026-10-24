@@ -19,6 +19,10 @@
 			"migrations_dir": "drizzle"
 		}
 	],
+	// OAuth clients, grants and tokens for the MCP endpoint
+	// (@cloudflare/workers-oauth-provider). Create one with
+	// `wrangler kv namespace create OAUTH_KV` and put its id here before deploying.
+	"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "local" }],
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",
