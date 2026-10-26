@@ -13,7 +13,7 @@
 	// Declared so `wrangler types` types them without a .dev.vars present.
 	// ALLOWED_EMAILS: who may sign up (app/lib/allowed-emails.ts). A secret
 	// rather than a var so the addresses stay out of the repository.
-	"secrets": { "required": ["BETTER_AUTH_SECRET", "ALLOWED_EMAILS"] },
+	"secrets": { "required": ["BETTER_AUTH_SECRET", "ALLOWED_EMAILS", "IMPRINT"] },
 	// `assets.directory` is intentionally absent: the Cloudflare Vite plugin
 	// populates it from the client build output and emits a flattened
 	// build/server/wrangler.json at build time.

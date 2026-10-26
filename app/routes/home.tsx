@@ -3,7 +3,7 @@ import { Form, Link, useNavigation } from "react-router";
 import { createToken, listTokens, revokeToken } from "~/api/tokens.server";
 import { Landing } from "~/components/landing";
 import { McpSetup } from "~/components/mcp-setup";
-import { Alert, Button, KindLabel, Logo, Ornament, SearchIcon, inputClass } from "~/components/ui";
+import { Alert, Button, KindLabel, LegalLinks, Logo, Ornament, SearchIcon, inputClass } from "~/components/ui";
 import { getSessionUser, requireUser } from "~/lib/auth.server";
 import { formatMinutes } from "~/lib/minutes";
 import { type SearchHit, searchRecipes } from "~/recipes/service.server";
@@ -157,6 +157,10 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           <TokensSection tokens={tokens} actionData={actionData} />
         </Appendix>
       </section>
+
+      <footer className="mt-16 rule-double pt-6">
+        <LegalLinks />
+      </footer>
     </div>
   );
 }

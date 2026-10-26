@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { MCP_TOOLS, McpSetup } from "~/components/mcp-setup";
-import { Logo, Ornament } from "~/components/ui";
+import { LegalLinks, Logo, Ornament } from "~/components/ui";
 
 /**
  * The public front page, shown at / to signed-out visitors: what this is,
@@ -139,6 +139,7 @@ export function Landing({ mcpUrl }: { mcpUrl: string }) {
           Set in Fraunces and Newsreader. Recipes are kept private to your account. Sign-up is by
           invitation.
         </p>
+        <LegalLinks className="mt-6" />
       </footer>
     </div>
   );

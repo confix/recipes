@@ -1,7 +1,7 @@
 import { Link, data } from "react-router";
 
 import { KeepAwake } from "~/components/keep-awake";
-import { Alert, KindLabel, Logo, Ornament } from "~/components/ui";
+import { Alert, KindLabel, LegalLinks, Logo, Ornament } from "~/components/ui";
 import { bakersPercentages, formatPercent } from "~/lib/bakers-math";
 import { requireUser } from "~/lib/auth.server";
 import { renderMarkdown } from "~/lib/markdown";
@@ -263,6 +263,9 @@ function Page({ children }: { children: React.ReactNode }) {
         <KeepAwake />
       </nav>
       <main>{children}</main>
+      <footer className="mt-20 rule-double pt-6">
+        <LegalLinks />
+      </footer>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import { Link } from "react-router";
 
 /**
  * The few building blocks every page shares, so the look lives in one place.
@@ -137,9 +138,26 @@ export function AuthShell({
           {children}
         </div>
         {footer ? <p className="mt-6 text-center text-lg italic">{footer}</p> : null}
+        <footer className="mt-10">
+          <LegalLinks />
+        </footer>
       </div>
     </main>
   );
 }
 
 export const textLinkClass = "not-italic text-red smallcaps underline-offset-4 hover:underline";
+
+/** Links to the imprint and privacy policy, for the foot of every page. */
+export function LegalLinks({ className }: { className?: string }) {
+  return (
+    <p className={cx("flex justify-center gap-5 text-sm text-muted smallcaps", className)}>
+      <Link to="/imprint" className="hover:text-red">
+        Imprint
+      </Link>
+      <Link to="/privacy" className="hover:text-red">
+        Privacy
+      </Link>
+    </p>
+  );
+}
