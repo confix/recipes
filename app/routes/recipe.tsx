@@ -1,7 +1,7 @@
 import { Link, data } from "react-router";
 
 import { KeepAwake } from "~/components/keep-awake";
-import { Alert, KindBadge } from "~/components/ui";
+import { Alert, KindLabel, Logo, Ornament } from "~/components/ui";
 import { bakersPercentages, formatPercent } from "~/lib/bakers-math";
 import { requireUser } from "~/lib/auth.server";
 import { renderMarkdown } from "~/lib/markdown";
@@ -101,18 +101,18 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
   if (recipe.invalid) {
     return (
       <Page>
-        <h1 className="mt-8 font-display text-4xl font-semibold tracking-tight">{recipe.title}</h1>
-        <div className="mt-6">
+        <h1 className="mt-12 text-center display text-5xl">{recipe.title}</h1>
+        <div className="mt-8">
           <Alert>
-            <p className="mb-1 font-medium">This recipe file has problems:</p>
-            <ul className="list-disc pl-5">
+            This recipe file has problems:
+            <ul className="mt-2 list-disc pl-5">
               {recipe.invalid.issues.map((issue) => (
                 <li key={issue}>{issue}</li>
               ))}
             </ul>
           </Alert>
         </div>
-        <pre className="mt-6 overflow-x-auto rounded-2xl bg-white p-4 text-sm whitespace-pre-wrap ring-1 ring-stone-900/5 dark:bg-stone-900 dark:ring-white/10">
+        <pre className="mt-8 overflow-x-auto border border-rule bg-paper-2 p-4 font-mono text-sm whitespace-pre-wrap">
           {recipe.invalid.markdown}
         </pre>
       </Page>
@@ -128,92 +128,68 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
 
   return (
     <Page>
-      <header className="mt-8 flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <KindBadge kind={recipe.kind} />
+      <header className="pt-12 text-center sm:pt-16">
+        <p className="flex flex-wrap justify-center gap-x-3 text-muted smallcaps">
+          <KindLabel kind={recipe.kind} />
           {recipe.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-stone-200/70 px-2.5 py-0.5 text-xs font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-300"
-            >
-              {tag}
-            </span>
+            <span key={tag}>· {tag}</span>
           ))}
-        </div>
-        <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl">
-          {recipe.title}
-        </h1>
-        {recipe.introHtml ? (
-          <div
-            className="recipe-body text-xl text-stone-700 dark:text-stone-300"
-            // Rendered by renderMarkdown, which escapes raw HTML and unsafe links.
-            dangerouslySetInnerHTML={{ __html: recipe.introHtml }}
-          />
+        </p>
+        <h1 className="mt-4 display text-5xl leading-[0.95] text-balance sm:text-7xl">{recipe.title}</h1>
+        {recipe.variantOf ? (
+          <p className="mt-4 text-lg text-muted italic">
+            a variation on{" "}
+            <Link to={`/r/${recipe.variantOf}`} className="text-red not-italic smallcaps hover:underline">
+              {recipe.variantOf}
+            </Link>
+          </p>
         ) : null}
-        {recipe.variantOf || recipe.source ? (
-          <div className="flex flex-col gap-1 text-sm text-stone-600 dark:text-stone-400">
-            {recipe.variantOf ? (
-              <p>
-                Variation of{" "}
-                <Link to={`/r/${recipe.variantOf}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
-                  {recipe.variantOf}
-                </Link>
-              </p>
-            ) : null}
-            {recipe.source ? (
-              <p className="break-words">
-                Source:{" "}
-                {recipe.sourceUrl ? (
-                  <a
-                    href={recipe.sourceUrl}
-                    rel="noreferrer noopener"
-                    className="font-medium text-brand-700 hover:underline dark:text-brand-300"
-                  >
-                    {recipe.source}
-                  </a>
-                ) : (
-                  recipe.source
-                )}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {facts.length > 0 ? (
-          <dl className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-stone-900/5 ring-1 ring-stone-900/5 sm:grid-cols-4 dark:bg-white/10 dark:ring-white/10">
-            {facts.map((fact) => (
-              <div key={fact.label} className="bg-white px-4 py-3 dark:bg-stone-900">
-                <dt className="text-xs font-semibold tracking-wider text-stone-500 uppercase">{fact.label}</dt>
-                <dd className="mt-0.5 font-display text-xl font-semibold">{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
+        <Ornament className="mx-auto mt-8 max-w-[10rem]" />
       </header>
 
+      {recipe.introHtml ? (
+        <div
+          className="recipe-body drop-cap mt-8 text-[1.35rem]! italic"
+          // Rendered by renderMarkdown, which escapes raw HTML and unsafe links.
+          dangerouslySetInnerHTML={{ __html: recipe.introHtml }}
+        />
+      ) : null}
+
+      {facts.length > 0 ? (
+        <dl className="mt-10 grid grid-cols-2 border-y border-rule text-center sm:grid-cols-4">
+          {facts.map((fact, i) => (
+            <div
+              key={fact.label}
+              className={`px-2 py-3 ${i % 2 ? "border-l" : ""} ${i > 0 ? "sm:border-l" : ""} ${i > 1 ? "border-t sm:border-t-0" : ""} border-rule`}
+            >
+              <dt className="text-sm text-muted smallcaps">{fact.label}</dt>
+              <dd className="mt-0.5 display text-2xl figures">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
       {recipe.formula ? (
-        <section className="mt-10 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-900/5 sm:p-6 dark:bg-stone-900 dark:ring-white/10">
-          <h2 className="font-display text-2xl font-semibold tracking-tight">Formula</h2>
-          <table className="mt-3 w-full text-left">
-            <thead className="text-xs font-semibold tracking-wider text-stone-500 uppercase">
+        <section className="mt-12">
+          <h2 className="border-b border-rule pb-1 text-[1.15rem] font-semibold text-red smallcaps">The formula</h2>
+          <table className="mt-2 w-full text-left text-[1.2rem] figures">
+            <thead className="text-sm text-muted smallcaps">
               <tr>
-                <th className="py-2">Ingredient</th>
-                <th className="py-2 text-right">Grams</th>
-                {recipe.bakers ? <th className="py-2 text-right">Baker's %</th> : null}
+                <th className="py-2 font-normal">Ingredient</th>
+                <th className="py-2 text-right font-normal">Grams</th>
+                {recipe.bakers ? <th className="py-2 pl-4 text-right font-normal">Baker’s %</th> : null}
               </tr>
             </thead>
             <tbody>
               {recipe.formula.map((entry, i) => (
-                <tr key={i} className="border-t border-stone-900/5 dark:border-white/10">
-                  <td className="py-2.5">
+                <tr key={i} className="border-t border-dotted border-ink/30">
+                  <td className="py-2">
                     {entry.name}
-                    {entry.note ? (
-                      <span className="text-sm text-stone-500">, {entry.note}</span>
-                    ) : null}
+                    {entry.note ? <span className="text-muted italic"> — {entry.note}</span> : null}
                   </td>
-                  <td className="py-2.5 text-right font-medium tabular-nums">{entry.grams}</td>
+                  <td className="py-2 text-right">{entry.grams}</td>
                   {recipe.bakers ? (
-                    <td className="py-2.5 text-right text-brand-700 tabular-nums dark:text-brand-300">
+                    <td className="py-2 pl-4 text-right text-red italic">
                       {formatPercent(recipe.bakers.entries[i].percent)}
                     </td>
                   ) : null}
@@ -225,29 +201,40 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
       ) : null}
 
       <article
-        className="recipe-body mt-6"
+        className="recipe-body mt-4"
         // Rendered by renderMarkdown, which escapes raw HTML and unsafe links.
         dangerouslySetInnerHTML={{ __html: recipe.html }}
       />
 
+      {recipe.source ? (
+        <p className="mt-10 text-lg break-words text-muted italic">
+          <span className="not-italic smallcaps">Source: </span>
+          {recipe.sourceUrl ? (
+            <a href={recipe.sourceUrl} rel="noreferrer noopener" className="text-red underline underline-offset-[3px]">
+              {recipe.source}
+            </a>
+          ) : (
+            recipe.source
+          )}
+        </p>
+      ) : null}
+
       {recipe.log.length > 0 || recipe.logNotesHtml ? (
-        <section className="mt-12 border-t border-stone-900/10 pt-8 dark:border-white/10">
-          <h2 className="font-display text-2xl font-semibold tracking-tight">Cooking log</h2>
-          <ol className="mt-4 flex flex-col gap-3 text-base">
+        <section className="mt-16 rule-double pt-6">
+          <h2 className="text-center display text-3xl italic">Kitchen notes</h2>
+          <ol className="mt-6">
             {recipe.log.map((entry, i) => (
-              <li key={i} className="relative border-l-2 border-brand-200 pl-4 dark:border-brand-900">
-                <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="font-medium tabular-nums">{entry.date}</span>
+              <li key={i} className="grid grid-cols-[6.5rem_1fr] gap-x-4 border-b border-ink/15 py-3 text-lg sm:grid-cols-[8rem_1fr]">
+                <span className="text-muted figures smallcaps">{entry.date}</span>
+                <span>
                   {entry.rating ? (
-                    <span className="text-amber-500" role="img" aria-label={`${entry.rating} of 5`}>
+                    <span className="mr-3 text-red" role="img" aria-label={`${entry.rating} of 5`}>
                       {"★".repeat(entry.rating)}
-                      <span className="text-stone-300 dark:text-stone-700">{"★".repeat(5 - entry.rating)}</span>
+                      <span className="opacity-25">{"★".repeat(5 - entry.rating)}</span>
                     </span>
                   ) : null}
-                </div>
-                {entry.notes ? (
-                  <p className="mt-0.5 text-stone-600 dark:text-stone-400">{entry.notes}</p>
-                ) : null}
+                  {entry.notes ? <span className="italic">{entry.notes}</span> : null}
+                </span>
               </li>
             ))}
           </ol>
@@ -267,19 +254,15 @@ export default function Recipe({ loaderData: recipe }: Route.ComponentProps) {
 /** Kitchen reading: one column, large type, a way back and the screen lock. */
 function Page({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen">
-      <nav className="sticky top-0 z-10 border-b border-stone-900/5 bg-paper/80 backdrop-blur dark:border-white/5 dark:bg-paper-dark/80">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link
-            to="/"
-            className="flex items-center gap-1 text-sm font-medium text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
-          >
-            <span aria-hidden="true">←</span> All recipes
-          </Link>
-          <KeepAwake />
-        </div>
+    <div className="mx-auto min-h-screen max-w-2xl px-5 pb-24 sm:px-8">
+      <nav className="sticky top-0 z-10 flex items-baseline justify-between gap-4 border-b border-rule bg-paper py-3">
+        <Link to="/" className="whitespace-nowrap text-muted smallcaps hover:text-red">
+          ← <span className="hidden sm:inline">The </span>index
+        </Link>
+        <Logo className="hidden sm:inline-flex" />
+        <KeepAwake />
       </nav>
-      <main className="mx-auto max-w-3xl px-4 pb-24 text-lg sm:px-6">{children}</main>
+      <main>{children}</main>
     </div>
   );
 }

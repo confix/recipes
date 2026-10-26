@@ -2,23 +2,12 @@ import type { ComponentProps, ReactNode } from "react";
 
 /**
  * The few building blocks every page shares, so the look lives in one place.
- * Colours come from the theme in app/app.css (brand = terracotta, stone
- * neutrals, a warm paper background).
+ * The look is a printed cookbook (see app/app.css): black ink, one red,
+ * hairline rules, small caps, no cards or shadows.
  */
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
-}
-
-/** A steaming bowl, drawn in currentColor. */
-export function BowlIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
-      <path d="M3 12h18a9 9 0 0 1-18 0Z" />
-      <path d="M8 8c0-1.5 1-1.5 1-3M12 8c0-1.5 1-1.5 1-3M16 8c0-1.5 1-1.5 1-3" />
-    </svg>
-  );
 }
 
 /* Heroicons (MIT), mini set. */
@@ -30,34 +19,32 @@ export function SearchIcon({ className }: { className?: string }) {
   );
 }
 
-export function ClockIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={className}>
-      <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .2.08.39.22.53l3 3a.75.75 0 1 0 1.06-1.06l-2.78-2.78V5Z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
+/** The wordmark: "Recipes" set like a book's spine. */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cx("inline-flex items-center gap-2.5", className)}>
-      <span className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-900/20">
-        <BowlIcon className="size-5" />
-      </span>
-      <span className="font-display text-xl font-semibold tracking-tight">Recipes</span>
+    <span className={cx("inline-flex items-baseline gap-2", className)}>
+      <span className="display text-2xl leading-none">Recipes</span>
+      <span className="text-red" aria-hidden="true">❦</span>
     </span>
   );
 }
 
+/** A centred printer's ornament between sections. */
+export function Ornament({ className }: { className?: string }) {
+  return (
+    <div aria-hidden="true" className={cx("flex items-center gap-4 text-red", className)}>
+      <span className="h-px flex-1 bg-rule/40" />
+      <span className="text-lg">❦</span>
+      <span className="h-px flex-1 bg-rule/40" />
+    </div>
+  );
+}
+
 const buttonVariants = {
-  primary:
-    "bg-brand-600 text-white shadow-sm shadow-brand-900/20 hover:bg-brand-700 focus-visible:outline-brand-600",
-  secondary:
-    "bg-white text-stone-800 ring-1 ring-stone-300 ring-inset hover:bg-stone-50 dark:bg-stone-900 dark:text-stone-100 dark:ring-stone-700 dark:hover:bg-stone-800",
-  ghost:
-    "text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100",
-  danger:
-    "text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50",
+  primary: "bg-ink text-paper hover:bg-red",
+  secondary: "border border-ink text-ink hover:bg-ink hover:text-paper",
+  ghost: "text-muted hover:text-red",
+  danger: "text-red hover:underline",
 };
 
 export function Button({
@@ -69,8 +56,8 @@ export function Button({
     <button
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 px-5 py-2.5 text-[1.05rem] smallcaps transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red disabled:cursor-not-allowed disabled:opacity-50",
         buttonVariants[variant],
         className,
       )}
@@ -78,10 +65,10 @@ export function Button({
   );
 }
 
+/** Inputs are a ruled line to write on, not a box. */
 export const inputClass = cx(
-  "block w-full rounded-xl border-0 bg-white px-3.5 py-2.5 text-stone-900 shadow-sm ring-1 ring-stone-300 ring-inset",
-  "placeholder:text-stone-400 focus:ring-2 focus:ring-brand-500 focus:outline-none",
-  "dark:bg-stone-900 dark:text-stone-100 dark:ring-stone-700 dark:placeholder:text-stone-500",
+  "block w-full border-0 border-b border-ink bg-transparent px-0 py-2 text-xl text-ink",
+  "placeholder:text-muted/70 placeholder:italic focus:border-red focus:ring-0 focus:outline-none",
 );
 
 export function Field({
@@ -90,10 +77,10 @@ export function Field({
   ...props
 }: ComponentProps<"input"> & { label: string; hint?: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{label}</span>
+    <label className="flex flex-col gap-0.5">
+      <span className="text-sm text-muted smallcaps">{label}</span>
       <input {...props} className={inputClass} />
-      {hint ? <span className="text-xs text-stone-500">{hint}</span> : null}
+      {hint ? <span className="mt-1 text-sm text-muted italic">{hint}</span> : null}
     </label>
   );
 }
@@ -103,67 +90,56 @@ export function Alert({ children, tone = "error" }: { children: ReactNode; tone?
     <div
       role="alert"
       className={cx(
-        "rounded-xl px-4 py-3 text-sm ring-1 ring-inset",
-        tone === "error"
-          ? "bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900"
-          : "bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900",
+        "border-l-2 py-1 pl-4 text-[1.05rem]",
+        tone === "error" ? "border-red text-red" : "border-ink",
       )}
     >
+      <span className="mr-2 smallcaps">{tone === "error" ? "Erratum." : "Note."}</span>
       {children}
     </div>
   );
 }
 
-const kindStyles = {
-  bake: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200",
-  cook: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200",
-};
-
-export function KindBadge({ kind }: { kind: "bake" | "cook" }) {
-  return (
-    <span className={cx("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", kindStyles[kind])}>
-      {kind === "bake" ? "Bake" : "Cook"}
-    </span>
-  );
+/** Bake or cook, as a small-caps label in the spot colour. */
+export function KindLabel({ kind, className }: { kind: "bake" | "cook"; className?: string }) {
+  return <span className={cx("text-red smallcaps", className)}>{kind === "bake" ? "Bake" : "Cook"}</span>;
 }
 
 /**
- * Centered card on a warm backdrop, for the pages you see before (or
- * instead of) the app proper: sign-in, sign-up, OAuth consent.
+ * A title page, for the pages you see before (or instead of) the app
+ * proper: sign-in, sign-up, OAuth consent.
  */
 export function AuthShell({
+  eyebrow = "Recipes · a private collection",
   title,
   subtitle,
   children,
   footer,
 }: {
+  eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
 }) {
   return (
-    <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden p-4 sm:p-6">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[radial-gradient(60rem_40rem_at_10%_-10%,var(--color-brand-200),transparent_60%),radial-gradient(50rem_35rem_at_110%_110%,var(--color-amber-200),transparent_60%)] opacity-70 dark:bg-[radial-gradient(60rem_40rem_at_10%_-10%,var(--color-brand-900),transparent_60%),radial-gradient(50rem_35rem_at_110%_110%,var(--color-amber-950),transparent_60%)] dark:opacity-60"
-      />
+    <main className="flex min-h-screen items-center justify-center p-5 sm:p-8">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Logo />
+        <a href="/" className="block text-center text-sm text-muted smallcaps hover:text-red">
+          {eyebrow}
+        </a>
+        <div className="mt-6 border-[3px] border-double border-rule px-6 py-10 sm:px-10">
+          <h1 className="text-center display text-5xl leading-none">{title}</h1>
+          {subtitle ? (
+            <p className="mt-4 text-center text-lg text-muted italic">{subtitle}</p>
+          ) : null}
+          <Ornament className="my-8" />
+          {children}
         </div>
-        <div className="rounded-3xl bg-white/90 p-6 shadow-xl shadow-stone-900/5 ring-1 ring-stone-900/5 backdrop-blur sm:p-8 dark:bg-stone-900/80 dark:ring-white/10">
-          <h1 className="font-display text-3xl font-semibold tracking-tight">{title}</h1>
-          {subtitle ? <p className="mt-2 text-stone-600 dark:text-stone-400">{subtitle}</p> : null}
-          <div className="mt-6">{children}</div>
-        </div>
-        {footer ? (
-          <p className="mt-6 text-center text-sm text-stone-600 dark:text-stone-400">{footer}</p>
-        ) : null}
+        {footer ? <p className="mt-6 text-center text-lg italic">{footer}</p> : null}
       </div>
     </main>
   );
 }
 
-export const textLinkClass =
-  "font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-300";
+export const textLinkClass = "not-italic text-red smallcaps underline-offset-4 hover:underline";

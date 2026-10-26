@@ -46,8 +46,7 @@ export function KeepAwake() {
 
   if (!supported) return null;
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-stone-600 select-none dark:text-stone-400">
-      {refused ? "Couldn't keep the screen on" : "Keep screen on"}
+    <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-muted select-none smallcaps hover:text-ink">
       <input
         type="checkbox"
         role="switch"
@@ -60,8 +59,11 @@ export function KeepAwake() {
       />
       <span
         aria-hidden="true"
-        className="relative h-6 w-10 rounded-full bg-stone-300 transition peer-checked:bg-brand-600 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600 after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-4 dark:bg-stone-700"
-      />
+        className="grid size-4 place-items-center border border-ink text-[0.7rem] leading-none text-paper peer-checked:bg-red peer-checked:border-red peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-red"
+      >
+        {wanted ? "✓" : ""}
+      </span>
+      {refused ? "Couldn't keep the screen on" : "Keep screen on"}
     </label>
   );
 }

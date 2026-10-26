@@ -7,8 +7,6 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import { Logo } from "~/components/ui";
-
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -21,7 +19,7 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..800,0..100;1,9..144,300..800,0..100&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=IBM+Plex+Mono:wght@400;500&display=swap",
   },
 ];
 
@@ -64,17 +62,17 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 p-6">
-      <Logo />
-      <h1 className="font-display text-5xl font-semibold tracking-tight">{message}</h1>
-      <p className="text-stone-600 dark:text-stone-400">{details}</p>
-      <p>
-        <a href="/" className="font-medium text-brand-700 underline underline-offset-2 dark:text-brand-300">
-          Back to your recipes
+    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center p-6 text-center">
+      <p className="text-sm text-muted smallcaps">Recipes · an erratum</p>
+      <h1 className="mt-4 display text-8xl text-red italic">{message}</h1>
+      <p className="mt-6 border-y border-rule py-4 text-xl italic">{details}</p>
+      <p className="mt-6">
+        <a href="/" className="text-red smallcaps underline underline-offset-4">
+          Return to the index
         </a>
       </p>
       {stack && (
-        <pre className="w-full overflow-x-auto rounded-lg bg-stone-900 p-4 text-sm text-stone-100">
+        <pre className="mt-8 w-full overflow-x-auto border border-rule p-4 text-left font-mono text-xs">
           <code>{stack}</code>
         </pre>
       )}

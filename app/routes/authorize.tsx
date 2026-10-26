@@ -113,22 +113,23 @@ export default function Authorize({ loaderData }: Route.ComponentProps) {
 
   return (
     <AuthShell
-      title={<>Connect {clientName}?</>}
+      eyebrow="Recipes · a request for access"
+      title={<>Connect <em className="text-red">{clientName}</em>?</>}
       subtitle={
         clientDomain ? (
-          <>Verified domain: <strong className="font-medium">{clientDomain}</strong></>
+          <>Verified domain: {clientDomain}</>
         ) : (
           "The app chose this name itself; it is not verified."
         )
       }
     >
-      <div className="flex flex-col gap-4 text-sm">
-        <p className="rounded-xl bg-stone-100 px-4 py-3 dark:bg-stone-800/60">
-          It will be able to <strong>read, create, change and delete</strong> recipes
-          in the collection of <strong>{email}</strong>.
+      <div className="flex flex-col gap-4 text-lg">
+        <p>
+          It will be able to <strong className="font-semibold">read, create, change and delete</strong>{" "}
+          recipes in the collection of <strong className="font-semibold">{email}</strong>.
         </p>
-        <p className="text-stone-600 dark:text-stone-400">
-          You will be sent back to <code className="font-medium">{redirectHost}</code>.
+        <p className="text-muted italic">
+          You will be sent back to <code className="font-mono text-sm not-italic">{redirectHost}</code>.
         </p>
         {redirectIsLoopback ? (
           <Alert tone="warning">
@@ -138,7 +139,7 @@ export default function Authorize({ loaderData }: Route.ComponentProps) {
         ) : null}
       </div>
 
-      <Form method="post" className="mt-6 flex gap-3">
+      <Form method="post" className="mt-8 flex gap-3">
         <input type="hidden" name="handle" value={handle} />
         <Button name="intent" value="deny" variant="secondary" className="flex-1 py-3">
           Deny
