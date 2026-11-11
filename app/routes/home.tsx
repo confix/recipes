@@ -5,19 +5,36 @@ import { Landing } from "~/components/landing";
 import { McpSetup } from "~/components/mcp-setup";
 import { Alert, Button, KindLabel, LegalLinks, Logo, Ornament, SearchIcon, inputClass } from "~/components/ui";
 import { getSessionUser, requireUser } from "~/lib/auth.server";
+import { getTranslator, translate, useT } from "~/lib/i18n";
+import { getLocale } from "~/lib/i18n.server";
+import { rootData, seo } from "~/lib/seo";
 import { formatMinutes } from "~/lib/minutes";
 import { type SearchHit, searchRecipes } from "~/recipes/service.server";
 
 import type { Route } from "./+types/home";
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  return [
-    { title: loaderData?.user ? "Recipes" : "Recipes · Your recipe box, fluent in AI" },
-    {
-      name: "description",
-      content: "A private recipe collection your AI assistant can search, save to and log cooks in, over MCP.",
+export function meta({ loaderData, matches }: Route.MetaArgs) {
+  // Signed in, / is a private collection. Signed out it is the front page:
+  // the one page search engines should find.
+  if (loaderData?.user) {
+    return seo({ matches, title: translate(rootData(matches).locale, "home.index"), noindex: true });
+  }
+  const origin = rootData(matches).origin;
+  return seo({
+    matches,
+    path: "/",
+    alternates: true,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      name: "Recipes",
+      url: `${origin}/`,
+      description: translate(rootData(matches).locale, "app.description"),
+      applicationCategory: "LifestyleApplication",
+      operatingSystem: "Web",
+      inLanguage: ["en", "de"],
     },
-  ];
+  });
 }
 
 /** Signed out, / is the public front page; signed in, it is your collection. */
@@ -44,7 +61,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const name = String(form.get("name") ?? "").trim().slice(0, 100);
-  if (!name) return { error: "Give the token a name." };
+  if (!name) return { error: getTranslator(getLocale(request)).t("home.tokenNameRequired") };
   const { token } = await createToken(user.id, name);
   return { token };
 }
@@ -60,18 +77,19 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
   // A GET navigation from this page is a search in flight.
   const searching = useNavigation().formMethod === "GET";
   const firstName = user.name?.split(" ")[0];
+  const { t, tn, rich } = useT();
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-5 pb-24 sm:px-8">
       <header className="flex items-baseline justify-between gap-4 border-b border-rule py-4">
-        <Link to="/" aria-label="Recipes index">
+        <Link to="/" aria-label={t("home.index")}>
           <Logo />
         </Link>
         <div className="flex items-baseline gap-4">
           <span className="hidden text-muted italic sm:inline">{user.email}</span>
           <Form method="post" action="/logout">
             <Button variant="ghost" className="px-0 py-0">
-              Sign out
+              {t("home.signOut")}
             </Button>
           </Form>
         </div>
@@ -79,15 +97,13 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
       <section className="pt-14 pb-10 text-center sm:pt-20">
         <p className="text-muted smallcaps">
-          {firstName ? `The collection of ${firstName}` : "A private collection"}
+          {firstName ? t("home.collectionOf", { name: firstName }) : t("home.privateCollection")}
         </p>
         <h1 className="mt-3 display text-7xl leading-[0.9] sm:text-8xl">
-          The <em className="text-red">Index</em>
+          {t("home.the")} <em className="text-red">{t("home.index")}</em>
         </h1>
         <p className="mx-auto mt-5 max-w-md text-xl text-muted italic">
-          {recipes.length > 0 && !query
-            ? `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"}, set down and cooked from.`
-            : "Search by name, ingredient, or a vague craving."}
+          {recipes.length > 0 && !query ? tn("home.count", recipes.length) : t("home.searchHint")}
         </p>
 
         <Form method="get" role="search" className="mx-auto mt-10 flex max-w-lg items-end gap-4">
@@ -97,29 +113,25 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               type="search"
               name="q"
               defaultValue={query}
-              placeholder="lentils, or a craving"
-              aria-label="Search recipes"
+              placeholder={t("home.searchPlaceholder")}
+              aria-label={t("home.searchLabel")}
               className={`${inputClass} pl-7`}
             />
           </div>
-          <Button type="submit">Look up</Button>
+          <Button type="submit">{t("home.lookUp")}</Button>
         </Form>
       </section>
 
       <section aria-busy={searching} className={searching ? "opacity-50 transition-opacity" : "transition-opacity"}>
         <div className="flex items-baseline justify-between rule-double pt-2 text-sm text-muted smallcaps">
-          <span>{query ? <>Entries for “{query}”</> : "Contents"}</span>
-          <span>{query ? <Link to="/" className="hover:text-red">Clear search</Link> : "Time"}</span>
+          <span>{query ? t("home.entriesFor", { query }) : t("home.contents")}</span>
+          <span>{query ? <Link to="/" className="hover:text-red">{t("home.clear")}</Link> : t("home.time")}</span>
         </div>
 
         {recipes.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="display text-3xl italic">{query ? "Nothing under that heading." : "The pages are still blank."}</p>
-            <p className="mt-3 text-lg text-muted">
-              {query
-                ? "Try fewer words, or describe the dish instead."
-                : "Add recipes through an MCP client or the API (see below)."}
-            </p>
+            <p className="display text-3xl italic">{query ? t("home.noneFound") : t("home.blank")}</p>
+            <p className="mt-3 text-lg text-muted">{query ? t("home.noneFoundHint") : t("home.blankHint")}</p>
           </div>
         ) : (
           <ol>
@@ -137,21 +149,19 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
       <section className="flex flex-col gap-10">
         <Appendix
           letter="A"
-          title="Connecting an assistant"
-          description="Add Recipes to Claude or any MCP client, then search and save recipes from a chat."
+          title={t("home.connectTitle")}
+          description={t("home.connectDescription")}
         >
           <McpSetup mcpUrl={mcpUrl} />
         </Appendix>
 
         <Appendix
           letter="B"
-          title="API tokens"
-          description={
-            <>
-              For scripts: send <code className="font-mono text-sm not-italic">Authorization: Bearer …</code> to{" "}
-              <code className="font-mono text-sm not-italic">/api</code>.
-            </>
-          }
+          title={t("home.tokensTitle")}
+          description={rich("home.tokensDescription", {
+            header: <code className="font-mono text-sm not-italic">Authorization: Bearer …</code>,
+            path: <code className="font-mono text-sm not-italic">/api</code>,
+          })}
           open={actionData != null}
         >
           <TokensSection tokens={tokens} actionData={actionData} />
@@ -167,9 +177,10 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
 /** One line of the index: number, title … time, then the description. */
 function IndexEntry({ recipe: r, number }: { recipe: SearchHit; number: number }) {
+  const { t } = useT();
   return (
     <Link to={`/r/${r.slug}`} className="group grid grid-cols-[2.75rem_1fr] gap-x-2 border-b border-ink/15 py-5 sm:grid-cols-[3.5rem_1fr]">
-      <span className="pt-1.5 text-sm text-red figures smallcaps">No. {String(number).padStart(2, "0")}</span>
+      <span className="pt-1.5 text-sm text-red figures smallcaps">{t("home.no", { n: String(number).padStart(2, "0") })}</span>
       <span className="min-w-0">
         {/* items-end: on a wrapped title the leader follows the last line. */}
         <span className="flex items-end">
@@ -186,9 +197,9 @@ function IndexEntry({ recipe: r, number }: { recipe: SearchHit; number: number }
             <span key={tag}>{tag}</span>
           ))}
           <span className="ml-auto">
-            {r.lastCooked ? `made ${r.cookCount}× · last ${r.lastCooked}` : "not yet made"}
+            {r.lastCooked ? t("home.made", { count: r.cookCount, date: r.lastCooked }) : t("home.notMade")}
             {r.avgRating != null ? (
-              <span className="ml-2 text-red" aria-label={`rated ${r.avgRating.toFixed(1)} of 5`}>
+              <span className="ml-2 text-red" aria-label={t("home.rated", { rating: r.avgRating.toFixed(1) })}>
                 {"★".repeat(Math.round(r.avgRating))}
               </span>
             ) : null}
@@ -213,10 +224,11 @@ function Appendix({
   open?: boolean;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <details open={open} className="group border-t border-rule">
       <summary className="flex cursor-pointer list-none items-baseline gap-4 py-4 [&::-webkit-details-marker]:hidden">
-        <span className="text-sm text-red smallcaps">Appendix {letter}</span>
+        <span className="text-sm text-red smallcaps">{t("home.appendix", { letter })}</span>
         <span className="flex-1">
           <span className="block display text-2xl group-hover:text-red">{title}</span>
           <span className="block text-lg text-muted italic">{description}</span>
@@ -237,11 +249,12 @@ function TokensSection({
   tokens: Awaited<ReturnType<typeof listTokens>>;
   actionData: Route.ComponentProps["actionData"];
 }) {
+  const { t, locale } = useT();
   return (
     <div className="flex flex-col gap-6">
       {actionData && "token" in actionData ? (
         <Alert tone="warning">
-          Copy this now — it will not be shown again:
+          {t("home.copyNow")}
           <code className="mt-2 block border border-rule bg-paper-2 p-3 font-mono text-sm break-all">
             {actionData.token}
           </code>
@@ -251,33 +264,35 @@ function TokensSection({
       <Form method="post" className="flex items-end gap-4">
         <input
           name="name"
-          placeholder="name it, e.g. laptop"
-          aria-label="Token name"
+          placeholder={t("home.tokenPlaceholder")}
+          aria-label={t("home.tokenLabel")}
           required
           maxLength={100}
           className={inputClass}
         />
         <Button type="submit" className="shrink-0">
-          Issue token
+          {t("home.issue")}
         </Button>
       </Form>
       {actionData && "error" in actionData ? <Alert>{actionData.error}</Alert> : null}
 
       {tokens.length > 0 ? (
         <ul>
-          {tokens.map((t) => (
-            <li key={t.id} className="flex items-baseline gap-2 border-b border-ink/15 py-3">
-              <span className="text-lg">{t.name}</span>
-              <code className="font-mono text-xs text-muted">{t.prefix}…</code>
+          {tokens.map((token) => (
+            <li key={token.id} className="flex items-baseline gap-2 border-b border-ink/15 py-3">
+              <span className="text-lg">{token.name}</span>
+              <code className="font-mono text-xs text-muted">{token.prefix}…</code>
               <span className="leader" aria-hidden="true" />
               <span className="text-sm text-muted italic">
-                {t.lastUsedAt ? `used ${new Date(t.lastUsedAt).toLocaleDateString()}` : "never used"}
+                {token.lastUsedAt
+                  ? t("home.used", { date: new Date(token.lastUsedAt).toLocaleDateString(locale, { timeZone: "UTC" }) })
+                  : t("home.neverUsed")}
               </span>
               <Form method="post">
                 <input type="hidden" name="intent" value="revoke" />
-                <input type="hidden" name="id" value={t.id} />
+                <input type="hidden" name="id" value={token.id} />
                 <Button variant="danger" className="px-0 py-0 pl-3">
-                  Revoke
+                  {t("home.revoke")}
                 </Button>
               </Form>
             </li>

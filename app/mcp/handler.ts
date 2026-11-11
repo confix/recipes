@@ -20,8 +20,9 @@ export const MCP_ALLOWED_ORIGIN_HOSTNAMES = [
   "claude.com",
 ];
 
-export function createRecipesMcpHandler() {
-  return createMcpHandler(createRecipesMcpServer, {
+/** One handler per origin, so tool results can link back to that origin. */
+export function createRecipesMcpHandler(origin?: string) {
+  return createMcpHandler(() => createRecipesMcpServer({ origin }), {
     route: "/mcp",
     allowedOriginHostnames: MCP_ALLOWED_ORIGIN_HOSTNAMES,
   });

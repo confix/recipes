@@ -3,6 +3,9 @@ import { Form, data, isRouteErrorResponse, redirect } from "react-router";
 
 import { Alert, AuthShell, Button } from "~/components/ui";
 import { requireUser } from "~/lib/auth.server";
+import { getTranslator, translate, useT } from "~/lib/i18n";
+import { getLocale } from "~/lib/i18n.server";
+import { rootData, seo } from "~/lib/seo";
 import { oauthHelpersContext } from "~/mcp/oauth-context";
 
 import type { Route } from "./+types/authorize";
@@ -18,8 +21,8 @@ import type { Route } from "./+types/authorize";
  * from it.
  */
 
-export function meta() {
-  return [{ title: "Connect an app · Recipes" }];
+export function meta({ matches }: Route.MetaArgs) {
+  return seo({ matches, title: translate(rootData(matches).locale, "authorize.metaTitle"), noindex: true });
 }
 
 /** Forward the consent cookie and anti-framing headers from the loader. */
@@ -87,7 +90,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   } catch (error) {
     if (error instanceof AuthorizationError) {
       // Expired, reused or unbound handle: start over from the client.
-      throw data("This sign-in link has expired. Start again from the app.", {
+      throw data(getTranslator(getLocale(request)).t("authorize.expired"), {
         status: 400,
       });
     }
@@ -96,12 +99,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const { t } = useT();
   const message =
     isRouteErrorResponse(error) && typeof error.data === "string"
       ? error.data
-      : "Something went wrong. Start again from the app.";
+      : t("authorize.wrong");
   return (
-    <AuthShell title="Could not connect">
+    <AuthShell title={t("authorize.failed")}>
       <Alert>{message}</Alert>
     </AuthShell>
   );
@@ -110,42 +114,38 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 export default function Authorize({ loaderData }: Route.ComponentProps) {
   const { handle, email, clientName, clientDomain, redirectHost, redirectIsLoopback } =
     loaderData;
+  const { t, rich } = useT();
 
   return (
     <AuthShell
-      eyebrow="Recipes · a request for access"
-      title={<>Connect <em className="text-red">{clientName}</em>?</>}
+      eyebrow={t("authorize.eyebrow")}
+      title={rich("authorize.title", { client: <em className="text-red">{clientName}</em> })}
       subtitle={
-        clientDomain ? (
-          <>Verified domain: {clientDomain}</>
-        ) : (
-          "The app chose this name itself; it is not verified."
-        )
+        clientDomain ? t("authorize.verified", { domain: clientDomain }) : t("authorize.unverified")
       }
     >
       <div className="flex flex-col gap-4 text-lg">
         <p>
-          It will be able to <strong className="font-semibold">read, create, change and delete</strong>{" "}
-          recipes in the collection of <strong className="font-semibold">{email}</strong>.
+          {rich("authorize.can", {
+            verbs: <strong className="font-semibold">{t("authorize.verbs")}</strong>,
+            email: <strong className="font-semibold">{email}</strong>,
+          })}
         </p>
         <p className="text-muted italic">
-          You will be sent back to <code className="font-mono text-sm not-italic">{redirectHost}</code>.
+          {rich("authorize.redirect", {
+            host: <code className="font-mono text-sm not-italic">{redirectHost}</code>,
+          })}
         </p>
-        {redirectIsLoopback ? (
-          <Alert tone="warning">
-            That is an app on this computer. Only continue if you just started the
-            connection yourself.
-          </Alert>
-        ) : null}
+        {redirectIsLoopback ? <Alert tone="warning">{t("authorize.loopback")}</Alert> : null}
       </div>
 
       <Form method="post" className="mt-8 flex gap-3">
         <input type="hidden" name="handle" value={handle} />
         <Button name="intent" value="deny" variant="secondary" className="flex-1 py-3">
-          Deny
+          {t("authorize.deny")}
         </Button>
         <Button name="intent" value="approve" className="flex-1 py-3">
-          Allow
+          {t("authorize.allow")}
         </Button>
       </Form>
     </AuthShell>

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 
+import { useT } from "~/lib/i18n";
+
 /**
  * Keeps the screen on while cooking, via the Screen Wake Lock API. Renders
  * nothing where the API is missing. The browser drops the lock whenever the
  * page is hidden, so it is re-requested when the page becomes visible again.
  */
 export function KeepAwake() {
+  const { t } = useT();
   const [supported, setSupported] = useState(false);
   const [wanted, setWanted] = useState(false);
   const [refused, setRefused] = useState(false);
@@ -63,7 +66,7 @@ export function KeepAwake() {
       >
         {wanted ? "✓" : ""}
       </span>
-      {refused ? "Couldn't keep the screen on" : "Keep screen on"}
+      {refused ? t("awake.refused") : t("awake.on")}
     </label>
   );
 }

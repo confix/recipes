@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { type TKey, useT } from "~/lib/i18n";
+
 /**
  * How to connect an MCP client to this server, written as a recipe. Shown on
  * the public front page and, for signed-in users, on the home page. `mcpUrl`
@@ -7,41 +9,43 @@ import { useState } from "react";
  * production alike.
  */
 export function McpSetup({ mcpUrl }: { mcpUrl: string }) {
+  const { t, rich } = useT();
   return (
     <div>
       <dl className="grid grid-cols-3 border-y border-rule text-center">
-        <Fact label="Serves" value="any MCP client" />
-        <Fact label="Time" value="one minute" />
-        <Fact label="Keys to paste" value="none" />
+        <Fact label={t("mcp.serves")} value={t("mcp.servesValue")} />
+        <Fact label={t("mcp.time")} value={t("mcp.timeValue")} />
+        <Fact label={t("mcp.keys")} value={t("mcp.keysValue")} />
       </dl>
 
-      <h3 className="mt-8 border-b border-rule pb-1 text-red smallcaps">Ingredients</h3>
-      <p className="mt-3 text-lg">The server address, which every client below needs:</p>
+      <h3 className="mt-8 border-b border-rule pb-1 text-red smallcaps">{t("mcp.ingredients")}</h3>
+      <p className="mt-3 text-lg">{t("mcp.address")}</p>
       <div className="mt-3">
         <CopyableCode code={mcpUrl} />
       </div>
 
-      <h3 className="mt-10 border-b border-rule pb-1 text-red smallcaps">Method</h3>
+      <h3 className="mt-10 border-b border-rule pb-1 text-red smallcaps">{t("mcp.method")}</h3>
       <div className="mt-2">
-        <Variation title="Claude.ai & Claude Desktop">
+        <Variation title={t("mcp.claude.title")}>
           <Step n={1}>
-            Open <em>Settings → Connectors</em> and choose <em>Add custom connector</em>.
+            {rich("mcp.claude.1", {
+              path: <em>{t("mcp.claude.1.path")}</em>,
+              action: <em>{t("mcp.claude.1.action")}</em>,
+            })}
           </Step>
-          <Step n={2}>Paste the address and save.</Step>
-          <Step n={3}>Sign in here when asked, and allow access.</Step>
+          <Step n={2}>{t("mcp.claude.2")}</Step>
+          <Step n={3}>{t("mcp.claude.3")}</Step>
         </Variation>
-        <Variation title="Claude Code">
-          <Step n={1}>In a terminal, run:</Step>
+        <Variation title={t("mcp.code.title")}>
+          <Step n={1}>{t("mcp.code.1")}</Step>
           <CopyableCode code={`claude mcp add --transport http recipes ${mcpUrl}`} />
           <Step n={2}>
-            Inside Claude Code, run <code className="font-mono text-sm">/mcp</code> and sign in.
+            {rich("mcp.code.2", { command: <code className="font-mono text-sm">/mcp</code> })}
           </Step>
         </Variation>
-        <Variation title="Any other client">
-          <Step n={1}>Add a remote server using the Streamable HTTP transport and the address.</Step>
-          <Step n={2}>
-            Sign-in is OAuth with dynamic client registration; the client opens it for you.
-          </Step>
+        <Variation title={t("mcp.other.title")}>
+          <Step n={1}>{t("mcp.other.1")}</Step>
+          <Step n={2}>{t("mcp.other.2")}</Step>
         </Variation>
       </div>
     </div>
@@ -76,6 +80,7 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 export function CopyableCode({ code }: { code: string }) {
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-start gap-3 border border-rule bg-paper-2 px-3 py-2.5">
@@ -90,18 +95,24 @@ export function CopyableCode({ code }: { code: string }) {
         }}
         className="shrink-0 text-sm text-red smallcaps hover:underline"
       >
-        {copied ? "Copied" : "Copy"}
+        {copied ? t("mcp.copied") : t("mcp.copy")}
       </button>
     </div>
   );
 }
 
+/** The MCP tools, in the order the front page lists them (labels: `tool.<name>`). */
 export const MCP_TOOLS = [
-  ["search_recipes", "keyword and natural-language search"],
-  ["find_similar", "recipes like this one, or like a description"],
-  ["get_recipe", "read the full markdown"],
-  ["save_recipe", "create or edit a recipe"],
-  ["log_cook", "record that you made it, with a rating"],
-  ["list_tags", "every tag in your collection"],
-  ["delete_recipe", "remove a recipe"],
-] as const;
+  "search_recipes",
+  "find_similar",
+  "get_recipe",
+  "scale_recipe",
+  "save_recipe",
+  "log_cook",
+  "share_recipe",
+  "unshare_recipe",
+  "list_tags",
+  "delete_recipe",
+] as const satisfies readonly ToolName[];
+
+type ToolName = { [K in TKey]: K extends `tool.${infer N}` ? N : never }[TKey];

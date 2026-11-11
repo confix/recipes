@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { MCP_TOOLS, McpSetup } from "~/components/mcp-setup";
 import { LegalLinks, Logo, Ornament } from "~/components/ui";
+import { type TKey, useT } from "~/lib/i18n";
 
 /**
  * The public front page, shown at / to signed-out visitors: what this is,
@@ -11,56 +12,66 @@ import { LegalLinks, Logo, Ornament } from "~/components/ui";
  */
 
 const CHAPTERS = [
-  ["foreword", "I", "Foreword"],
-  ["conversation", "II", "A conversation in the kitchen"],
-  ["mcp", "III", "Connecting your assistant"],
-  ["tools", "IV", "What it can reach for"],
-] as const;
+  ["foreword", "I", "landing.ch.foreword"],
+  ["conversation", "II", "landing.ch.conversation"],
+  ["mcp", "III", "landing.ch.mcp"],
+  ["tools", "IV", "landing.ch.tools"],
+] as const satisfies readonly (readonly [string, string, TKey])[];
+
+const RUNINS = [
+  ["landing.plain.title", "landing.plain.body"],
+  ["landing.meaning.title", "landing.meaning.body"],
+  ["landing.bakers.title", "landing.bakers.body"],
+  ["landing.scale.title", "landing.scale.body"],
+  ["landing.share.title", "landing.share.body"],
+  ["landing.stove.title", "landing.stove.body"],
+] as const satisfies readonly (readonly [TKey, TKey])[];
 
 export function Landing({ mcpUrl }: { mcpUrl: string }) {
+  const { t, rich } = useT();
   return (
     <div className="mx-auto min-h-screen max-w-4xl px-5 sm:px-8">
       <header className="flex items-baseline justify-between gap-4 border-b border-rule py-4">
         <Logo />
         <nav className="flex items-baseline gap-5 smallcaps">
           <a href="#mcp" className="hidden text-muted hover:text-red sm:inline">
-            Connect
+            {t("landing.connect")}
           </a>
           <Link to="/login" className="text-muted hover:text-red">
-            Sign in
+            {t("landing.signIn")}
           </Link>
           <Link to="/signup" className="text-red underline-offset-4 hover:underline">
-            Create account
+            {t("landing.createAccount")}
           </Link>
         </nav>
       </header>
 
       <section className="py-20 text-center sm:py-28">
-        <p className="text-muted smallcaps">Volume I · the invite-only edition</p>
+        <p className="text-muted smallcaps">{t("landing.edition")}</p>
         <h1 className="mt-6 display text-[5.5rem] leading-[0.85] sm:text-[9rem]">Recipes</h1>
         <p className="mx-auto mt-6 max-w-xl text-2xl text-muted italic sm:text-[1.7rem]">
-          a private recipe box that your <span className="text-red">AI assistant</span> can read,
-          write, and remember
+          {t("landing.taglineBefore")} <span className="text-red">{t("landing.taglineAssistant")}</span>{" "}
+          {t("landing.taglineAfter")}
         </p>
         <Ornament className="mx-auto mt-12 max-w-xs" />
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           <Link to="/signup" className="bg-ink px-6 py-3 text-lg text-paper smallcaps hover:bg-red">
-            Begin a collection
+            {t("landing.begin")}
           </Link>
           <a href="#mcp" className="border border-ink px-6 py-3 text-lg smallcaps hover:bg-ink hover:text-paper">
-            Connect your assistant
+            {t("landing.connectAssistant")}
           </a>
         </div>
       </section>
 
       <nav aria-label="Contents" className="mx-auto max-w-xl rule-double pt-6 pb-16">
-        <p className="mb-4 text-center text-muted smallcaps">Contents</p>
+        <p className="mb-4 text-center text-muted smallcaps">{t("landing.contents")}</p>
         <ol>
           {CHAPTERS.map(([id, numeral, title], i) => (
             <li key={id}>
               <a href={`#${id}`} className="group flex items-baseline py-1.5 text-xl">
                 <span className="w-10 text-red smallcaps">{numeral}.</span>
-                <span className="group-hover:text-red">{title}</span>
+                <span className="group-hover:text-red">{t(title)}</span>
                 <span className="leader" aria-hidden="true" />
                 <span className="figures">{i + 1}</span>
               </a>
@@ -69,76 +80,55 @@ export function Landing({ mcpUrl }: { mcpUrl: string }) {
         </ol>
       </nav>
 
-      <Chapter id="foreword" numeral="I" title="Foreword">
+      <Chapter id="foreword" numeral="I" title={t("landing.ch.foreword")}>
         <div className="drop-cap text-xl leading-relaxed sm:columns-2 sm:gap-10">
-          <p>
-            Every cook keeps a box of recipes: the dal you make on Tuesdays, the loaf you have
-            been tuning for a year, the thing a friend once wrote on a napkin. This is that box,
-            with one difference. Your assistant can open it.
-          </p>
-          <p className="mt-4">
-            <Runin>Plain pages.</Runin> Each recipe is a markdown file with a little frontmatter.
-            You can export it, keep it under version control, and read it anywhere.
-          </p>
-          <p className="mt-4">
-            <Runin>Found by meaning.</Runin> Look things up by name or ingredient, or by a vague
-            craving such as “something warming with chickpeas”.
-          </p>
-          <p className="mt-4">
-            <Runin>For bakers.</Runin> Give a bake its formula in grams, and baker’s percentages
-            and hydration are worked out for you.
-          </p>
-          <p className="mt-4">
-            <Runin>At the stove.</Runin> Each recipe page uses large type in one column, and it can
-            keep your phone’s screen awake while you cook.
-          </p>
+          <p>{t("landing.foreword")}</p>
+          {RUNINS.map(([title, body]) => (
+            <p key={title} className="mt-4">
+              <Runin>{t(title)}</Runin> {t(body)}
+            </p>
+          ))}
         </div>
       </Chapter>
 
-      <Chapter id="conversation" numeral="II" title="A conversation in the kitchen">
+      <Chapter id="conversation" numeral="II" title={t("landing.ch.conversation")}>
         <div className="mx-auto max-w-2xl text-xl leading-relaxed">
-          <Line speaker="You">Something cosy for tonight? Like that dal, but with more heat.</Line>
-          <Stage>The assistant consults the index, by likeness.</Stage>
-          <Line speaker="Assistant">
-            You have a <em>Chana Masala</em> that you rated five stars. It is close to the dal and
-            spicier, and takes about forty minutes. Shall I read it out?
+          <Line speaker={t("landing.you")}>{t("landing.line1")}</Line>
+          <Stage>{t("landing.stage1")}</Stage>
+          <Line speaker={t("landing.assistant")}>
+            {rich("landing.line2", {
+              recipe: <em className="text-red underline underline-offset-[3px]">{t("landing.line2.recipe")}</em>,
+            })}
           </Line>
-          <Line speaker="You">Perfect. And log it for tonight, five stars.</Line>
-          <Stage>The assistant writes in the cooking log.</Stage>
-          <Line speaker="Assistant">Done. That is the seventh time you have made it.</Line>
+          <Line speaker={t("landing.you")}>{t("landing.line3")}</Line>
+          <Stage>{t("landing.stage2")}</Stage>
+          <Line speaker={t("landing.assistant")}>{t("landing.line4")}</Line>
         </div>
       </Chapter>
 
-      <Chapter id="mcp" numeral="III" title="Connecting your assistant">
-        <p className="mb-8 max-w-2xl text-xl leading-relaxed">
-          Recipes is a remote MCP server. Add it to your client, sign in once and allow access.
-          From then on, your assistant works with your own collection and no one else’s.
-        </p>
+      <Chapter id="mcp" numeral="III" title={t("landing.ch.mcp")}>
+        <p className="mb-8 max-w-2xl text-xl leading-relaxed">{t("landing.mcpIntro")}</p>
         <McpSetup mcpUrl={mcpUrl} />
       </Chapter>
 
-      <Chapter id="tools" numeral="IV" title="What it can reach for">
+      <Chapter id="tools" numeral="IV" title={t("landing.ch.tools")}>
         <ul className="max-w-2xl">
-          {MCP_TOOLS.map(([name, description]) => (
+          {MCP_TOOLS.map((name) => (
             <li key={name} className="flex items-baseline border-b border-ink/10 py-2">
               <code className="font-mono text-[0.9rem] text-red">{name}</code>
               <span className="leader" aria-hidden="true" />
-              <span className="text-right text-lg italic">{description}</span>
+              <span className="text-right text-lg italic">{t(`tool.${name}`)}</span>
             </li>
           ))}
         </ul>
         <p className="mt-8 text-lg text-muted">
-          Prefer scripts? After signing in you can issue a personal API token and use the REST
-          API at <code className="font-mono text-sm">/api/recipes</code>.
+          {rich("landing.scripts", { path: <code className="font-mono text-sm">/api/recipes</code> })}
         </p>
       </Chapter>
 
       <footer className="mt-24 rule-double py-10 text-center">
-        <p className="text-muted smallcaps">Colophon</p>
-        <p className="mx-auto mt-3 max-w-md text-lg text-muted italic">
-          Set in Fraunces and Newsreader. Recipes are kept private to your account. Sign-up is by
-          invitation.
-        </p>
+        <p className="text-muted smallcaps">{t("landing.colophon")}</p>
+        <p className="mx-auto mt-3 max-w-md text-lg text-muted italic">{t("landing.colophonText")}</p>
         <LegalLinks className="mt-6" />
       </footer>
     </div>
@@ -156,9 +146,10 @@ function Chapter({
   title: string;
   children: ReactNode;
 }) {
+  const { t } = useT();
   return (
     <section id={id} className="scroll-mt-6 border-t border-rule pt-10 pb-16">
-      <p className="text-red smallcaps">Chapter {numeral}</p>
+      <p className="text-red smallcaps">{t("landing.chapter", { n: numeral })}</p>
       <h2 className="mt-1 mb-8 display text-4xl sm:text-5xl">{title}</h2>
       {children}
     </section>

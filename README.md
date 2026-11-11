@@ -42,7 +42,8 @@ pnpm dev
 
 Sign up at `/signup`, then point an MCP client at `http://localhost:5173/mcp`
 or create an API token on the home page. The home page also searches your
-recipes; `/r/<slug>` is a read-only view for the kitchen.
+recipes; `/r/<slug>` is a read-only view for the kitchen (`?scale=2` doubles it),
+and `/s/<token>` is a recipe someone shared by link.
 
 Local data lives in `.wrangler/state`. (Checkouts from before the deploy setup
 kept it under a placeholder id; re-run the migrations command above once to get
@@ -113,9 +114,11 @@ OAuth: the client registers itself, you sign in and approve it on
 claude mcp add --transport http recipes https://recipes.confix.run/mcp
 ```
 
-Tools: `search_recipes`, `find_similar`, `get_recipe`, `save_recipe`,
-`log_cook`, `list_tags`, `delete_recipe`. The server's instructions teach the client the
-recipe format.
+Tools: `search_recipes`, `find_similar`, `get_recipe`, `scale_recipe`,
+`save_recipe`, `log_cook`, `share_recipe`, `unshare_recipe`, `list_tags`,
+`delete_recipe`. The server's instructions teach the client the recipe format.
+Every recipe in a tool result carries its web `url`, so the assistant can link
+you straight to the page.
 
 ## API
 

@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { parse as parseYaml, YAMLParseError } from "yaml";
+import { parse as parseYaml, parseDocument, YAMLParseError, type Document } from "yaml";
 
 /**
  * The recipe file format: YAML frontmatter + free-form markdown body. The
@@ -132,6 +132,19 @@ export function parseRecipe(markdown: string): ParseResult {
   };
 }
 
+/**
+ * Rewrites the frontmatter through a YAML document, so keys the edit doesn't
+ * touch keep their order and comments. The body is left byte-identical.
+ * Throws if there is no frontmatter; callers pass recipes that parsed.
+ */
+export function editFrontmatter(markdown: string, edit: (doc: Document) => void): string {
+  const match = FRONTMATTER_RE.exec(markdown);
+  if (!match) throw new Error("recipe has no frontmatter");
+  const doc = parseDocument(match[1]);
+  edit(doc);
+  return `---\n${doc.toString().replace(/\s*$/, "")}\n---\n${markdown.slice(match[0].length)}`;
+}
+
 // --- Log -------------------------------------------------------------------
 
 /** Matches the `## Log` heading (case-insensitive). */
@@ -181,12 +194,19 @@ export function parseLogSection(body: string): {
   return { entries, unrecognized };
 }
 
-/** The body with the `## Log` section (heading included) removed. */
+/**
+ * The body with every `## Log` section (heading included) removed. Every,
+ * not the first: this is what keeps the owner's log off shared pages and out
+ * of imported copies, and a hand-edited file may have two.
+ */
 export function withoutLog(body: string): string {
-  const heading = LOG_HEADING_RE.exec(body);
-  const section = logSection(body);
-  if (!heading || !section) return body;
-  return body.slice(0, heading.index) + body.slice(section[1]);
+  let rest = body;
+  for (;;) {
+    const heading = LOG_HEADING_RE.exec(rest);
+    const section = logSection(rest);
+    if (!heading || !section) return rest;
+    rest = rest.slice(0, heading.index) + rest.slice(section[1]);
+  }
 }
 
 export function formatLogLine(entry: LogEntry): string {

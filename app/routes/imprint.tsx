@@ -1,10 +1,17 @@
 import { LegalPage, OperatorAddress, Section } from "~/components/legal";
+import { translate, useT } from "~/lib/i18n";
 import { getOperator } from "~/lib/operator.server";
+import { rootData, seo } from "~/lib/seo";
 
 import type { Route } from "./+types/imprint";
 
-export function meta() {
-  return [{ title: "Imprint · Recipes" }];
+export function meta({ matches }: Route.MetaArgs) {
+  return seo({
+    matches,
+    title: translate(rootData(matches).locale, "imprint.title"),
+    path: "/imprint",
+    alternates: true,
+  });
 }
 
 export function loader() {
@@ -12,24 +19,29 @@ export function loader() {
 }
 
 export default function Imprint({ loaderData: { operator } }: Route.ComponentProps) {
+  const { t, rich } = useT();
   return (
-    <LegalPage eyebrow="Impressum" title="Imprint">
-      <Section title="Information pursuant to § 5 DDG">
+    <LegalPage eyebrow={t("imprint.eyebrow")} title={t("imprint.title")}>
+      <Section title={t("imprint.info")}>
         <OperatorAddress operator={operator} />
+        <p className="text-muted italic">{t("imprint.private")}</p>
         <p className="text-muted italic">
-          Recipes is a private, non-commercial project. Accounts are by invitation only.
+          {rich("imprint.personal", {
+            link: (
+              <a href="https://quebi.de" className="text-red underline underline-offset-[3px]">
+                quebi.de
+              </a>
+            ),
+          })}
         </p>
       </Section>
 
-      <Section title="Responsible for content pursuant to § 18 (2) MStV">
-        <p>{operator?.name ?? "The operator named above"}, at the address above.</p>
+      <Section title={t("imprint.responsible")}>
+        <p>{t("imprint.atAddress", { name: operator?.name ?? t("imprint.operatorFallback") })}</p>
       </Section>
 
-      <Section title="Your recipes">
-        <p>
-          Each recipe belongs to the account that saved it and is visible only to that account.
-          The operator does not publish or review what users store.
-        </p>
+      <Section title={t("imprint.recipes")}>
+        <p>{t("imprint.recipesText")}</p>
       </Section>
     </LegalPage>
   );

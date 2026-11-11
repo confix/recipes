@@ -1,5 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Link } from "react-router";
+import { Form, Link, useLocation } from "react-router";
+
+import { LOCALE_NAMES, LOCALES, useT } from "~/lib/i18n";
 
 /**
  * The few building blocks every page shares, so the look lives in one place.
@@ -87,6 +89,7 @@ export function Field({
 }
 
 export function Alert({ children, tone = "error" }: { children: ReactNode; tone?: "error" | "warning" }) {
+  const { t } = useT();
   return (
     <div
       role="alert"
@@ -95,7 +98,7 @@ export function Alert({ children, tone = "error" }: { children: ReactNode; tone?
         tone === "error" ? "border-red text-red" : "border-ink",
       )}
     >
-      <span className="mr-2 smallcaps">{tone === "error" ? "Erratum." : "Note."}</span>
+      <span className="mr-2 smallcaps">{tone === "error" ? t("ui.erratum") : t("ui.note")}</span>
       {children}
     </div>
   );
@@ -103,7 +106,8 @@ export function Alert({ children, tone = "error" }: { children: ReactNode; tone?
 
 /** Bake or cook, as a small-caps label in the spot colour. */
 export function KindLabel({ kind, className }: { kind: "bake" | "cook"; className?: string }) {
-  return <span className={cx("text-red smallcaps", className)}>{kind === "bake" ? "Bake" : "Cook"}</span>;
+  const { t } = useT();
+  return <span className={cx("text-red smallcaps", className)}>{t(kind === "bake" ? "kind.bake" : "kind.cook")}</span>;
 }
 
 /**
@@ -111,7 +115,7 @@ export function KindLabel({ kind, className }: { kind: "bake" | "cook"; classNam
  * proper: sign-in, sign-up, OAuth consent.
  */
 export function AuthShell({
-  eyebrow = "Recipes · a private collection",
+  eyebrow,
   title,
   subtitle,
   children,
@@ -123,11 +127,12 @@ export function AuthShell({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const { t } = useT();
   return (
     <main className="flex min-h-screen items-center justify-center p-5 sm:p-8">
       <div className="w-full max-w-md">
         <a href="/" className="block text-center text-sm text-muted smallcaps hover:text-red">
-          {eyebrow}
+          {eyebrow ?? t("auth.eyebrow")}
         </a>
         <div className="mt-6 border-[3px] border-double border-rule px-6 py-10 sm:px-10">
           <h1 className="text-center display text-5xl leading-none">{title}</h1>
@@ -148,16 +153,47 @@ export function AuthShell({
 
 export const textLinkClass = "not-italic text-red smallcaps underline-offset-4 hover:underline";
 
-/** Links to the imprint and privacy policy, for the foot of every page. */
+/**
+ * The foot of every page: imprint, privacy policy, and the language switch.
+ * Switching posts to /locale, which pins the choice in a cookie and comes
+ * back to this page — so it works without JavaScript too.
+ */
 export function LegalLinks({ className }: { className?: string }) {
+  const { t, locale } = useT();
+  const location = useLocation();
+  // Come back here afterwards, minus any ?lang= pin, which would override
+  // the choice just made.
+  const params = new URLSearchParams(location.search);
+  params.delete("lang");
+  const query = params.toString();
+  // No hash: the server never sees it, so including it would mismatch on hydration.
+  const back = `${location.pathname}${query ? `?${query}` : ""}`;
+
   return (
-    <p className={cx("flex justify-center gap-5 text-sm text-muted smallcaps", className)}>
+    <div className={cx("flex flex-wrap items-baseline justify-center gap-x-5 gap-y-2 text-sm text-muted smallcaps", className)}>
       <Link to="/imprint" className="hover:text-red">
-        Imprint
+        {t("footer.imprint")}
       </Link>
       <Link to="/privacy" className="hover:text-red">
-        Privacy
+        {t("footer.privacy")}
       </Link>
-    </p>
+      <Form method="post" action="/locale" reloadDocument className="flex items-baseline gap-2">
+        <input type="hidden" name="redirectTo" value={back} />
+        <span className="sr-only">{t("footer.language")}</span>
+        <span aria-hidden="true">·</span>
+        {LOCALES.map((l) => (
+          <button
+            key={l}
+            name="locale"
+            value={l}
+            lang={l}
+            aria-pressed={l === locale}
+            className={l === locale ? "text-ink smallcaps" : "smallcaps hover:text-red"}
+          >
+            {LOCALE_NAMES[l]}
+          </button>
+        ))}
+      </Form>
+    </div>
   );
 }

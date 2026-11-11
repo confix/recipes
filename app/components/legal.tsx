@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { Alert, LegalLinks, Logo, Ornament } from "~/components/ui";
+import { useT } from "~/lib/i18n";
 import type { Operator } from "~/lib/imprint";
 
 /** Long-form legal text, set like the back matter of a book. */
@@ -14,6 +15,7 @@ export function LegalPage({
   title: string;
   children: ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-5 pb-16 sm:px-8">
       <header className="flex items-baseline justify-between gap-4 border-b border-rule py-4">
@@ -21,7 +23,7 @@ export function LegalPage({
           <Logo />
         </Link>
         <Link to="/" className="text-muted smallcaps hover:text-red">
-          ← Back
+          {t("legal.back")}
         </Link>
       </header>
       <main>
@@ -50,8 +52,9 @@ export function Section({ title, children }: { title: string; children: ReactNod
 
 /** The operator's name, address and email, or a visible gap if unset. */
 export function OperatorAddress({ operator }: { operator: Operator | null }) {
+  const { t } = useT();
   if (!operator) {
-    return <Alert>The operator’s details have not been configured (the IMPRINT setting).</Alert>;
+    return <Alert>{t("legal.noOperator")}</Alert>;
   }
   return (
     <address className="not-italic">
@@ -63,7 +66,7 @@ export function OperatorAddress({ operator }: { operator: Operator | null }) {
       ))}
       {operator.email ? (
         <span className="mt-2 block">
-          Email:{" "}
+          {t("legal.email")}:{" "}
           <a href={`mailto:${operator.email}`} className="text-red underline underline-offset-[3px]">
             {operator.email}
           </a>

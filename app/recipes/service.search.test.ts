@@ -28,6 +28,13 @@ vi.mock("./semantic.server", () => ({
   deleteRecipeVector: vi.fn(),
 }));
 
+vi.mock("./shares.server", () => ({
+  createShare: vi.fn(async () => "tok"),
+  getShareToken: vi.fn(async () => null),
+  resolveShare: vi.fn(async () => null),
+  revokeShares: vi.fn(async () => true),
+}));
+
 function hit(slug: string): SearchHit {
   return {
     slug, title: slug, kind: "cook", summary: null, tags: [], servings: null,
@@ -39,9 +46,15 @@ function hit(slug: string): SearchHit {
 const index = await import("./search-index.server");
 const semantic = await import("./semantic.server");
 const storage = await import("./storage.server");
-const { deleteRecipe, findSimilar, saveRecipe, searchRecipes } = await import(
-  "./service.server"
-);
+const shares = await import("./shares.server");
+const {
+  deleteRecipe,
+  findSimilar,
+  getSharedRecipe,
+  importSharedRecipe,
+  saveRecipe,
+  searchRecipes,
+} = await import("./service.server");
 const { embeddingText, sha256Hex } = await import("./semantic");
 const { parseRecipe } = await import("./format");
 
@@ -182,5 +195,76 @@ describe("keeping vectors in sync", () => {
     await expect(deleteRecipe("u", "dal")).resolves.toBeUndefined();
     expect(index.unindexRecipe).toHaveBeenCalledWith("u", "dal");
     expect(semantic.deleteRecipeVector).toHaveBeenCalledWith("u", "dal");
+  });
+});
+
+describe("sharing", () => {
+  const SHARED = [
+    "---",
+    "title: Chana Masala",
+    "kind: cook # spicy one",
+    "variant_of: dal",
+    "private_note: keep me home",
+    "---",
+    "",
+    "Warming.",
+    "",
+    "## Ingredients",
+    "- 400 g chickpeas",
+    "",
+    "## Log",
+    "- 2026-10-01 ★5 — private note",
+    "",
+    "## Notes",
+    "Serve with rice.",
+    "",
+    "## Log",
+    "- 2026-10-02 ★4 — second private log",
+    "",
+  ].join("\n");
+
+  beforeEach(() => {
+    vi.mocked(shares.resolveShare).mockResolvedValue({ userId: "owner", slug: "chana" });
+    vi.mocked(storage.getRecipeFile).mockResolvedValue({
+      markdown: SHARED,
+      etag: "e0",
+      uploaded: new Date(0),
+    });
+  });
+
+  it("never shows the owner's cooking log", async () => {
+    const shared = await getSharedRecipe("tok");
+    expect(shared?.body).toContain("400 g chickpeas");
+    expect(shared?.body).not.toContain("private note");
+    expect(shared?.body).not.toContain("second private log");
+    expect(shared?.body).toContain("Serve with rice.");
+  });
+
+  it("imports an independent copy: no log, no variant_of, credited source", async () => {
+    vi.mocked(storage.putRecipeFile).mockResolvedValue({ etag: "e1", uploaded: new Date(0) });
+    const result = await importSharedRecipe("me", "tok", "https://x.test/s/tok");
+    expect(result).toEqual({ slug: "chana-masala", created: true });
+
+    const [userId, , markdown] = vi.mocked(storage.putRecipeFile).mock.calls[0];
+    expect(userId).toBe("me");
+    expect(markdown).not.toContain("private note");
+    expect(markdown).not.toContain("variant_of");
+    expect(markdown).not.toContain("private_note");
+    expect(markdown).toContain("source: https://x.test/s/tok");
+    expect(markdown).toContain("# spicy one");
+    expect(parseRecipe(markdown).ok).toBe(true);
+  });
+
+  it("importing your own share is a no-op", async () => {
+    expect(await importSharedRecipe("owner", "tok", "https://x.test/s/tok")).toEqual({
+      slug: "chana",
+      created: false,
+    });
+    expect(storage.putRecipeFile).not.toHaveBeenCalled();
+  });
+
+  it("deleting a recipe revokes its links", async () => {
+    await deleteRecipe("u", "dal");
+    expect(shares.revokeShares).toHaveBeenCalledWith("u", "dal");
   });
 });

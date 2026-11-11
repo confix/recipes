@@ -6,9 +6,11 @@ import {
   type ParsedRecipe,
   type RecipeKind,
   appendLogEntry,
+  editFrontmatter,
   isValidSlug,
   parseRecipe,
   slugify,
+  withoutLog,
 } from "./format";
 import {
   type SearchFilters,
@@ -31,6 +33,7 @@ import {
   storedVector,
   upsertRecipeVector,
 } from "./semantic.server";
+import { createShare, getShareToken, resolveShare, revokeShares } from "./shares.server";
 import {
   deleteRecipeFile,
   getRecipeFile,
@@ -270,8 +273,87 @@ export async function deleteRecipe(userId: string, slug: string) {
   if (!(await recipeFileExists(userId, slug))) {
     throw new RecipeError("not_found", `No recipe "${slug}".`);
   }
+  // Links first: a later recipe that reuses the slug must not inherit them,
+  // and if this fails the recipe is still there rather than half-deleted.
+  await revokeShares(userId, slug);
   await deleteRecipeFile(userId, slug);
   await unindex(userId, slug);
+}
+
+// --- Sharing -----------------------------------------------------------------
+
+/** Public link token for the recipe, created on first share. */
+export async function shareRecipe(userId: string, slug: string): Promise<string> {
+  assertSlug(slug);
+  if (!(await recipeFileExists(userId, slug))) {
+    throw new RecipeError("not_found", `No recipe "${slug}".`);
+  }
+  return createShare(userId, slug);
+}
+
+/** Stops sharing. Returns whether the recipe was shared. */
+export async function unshareRecipe(userId: string, slug: string): Promise<boolean> {
+  assertSlug(slug);
+  return revokeShares(userId, slug);
+}
+
+export { getShareToken };
+
+/**
+ * The recipe behind a share link, as the public sees it: the file minus its
+ * `## Log` section. The cooking log is the owner's diary — dates, ratings and
+ * notes — and never leaves their account. Null when the link is unknown,
+ * revoked, or the recipe is gone.
+ */
+export async function getSharedRecipe(token: string) {
+  const share = await resolveShare(token);
+  if (!share) return null;
+  const file = await getRecipeFile(share.userId, share.slug);
+  if (!file) return null;
+  const parsed = parseRecipe(file.markdown);
+  if (!parsed.ok) return null;
+  const { frontmatter, body } = parsed.recipe;
+  return {
+    ownerId: share.userId,
+    slug: share.slug,
+    frontmatter,
+    body: withoutLog(body),
+  };
+}
+
+/**
+ * Copies a shared recipe into the caller's own collection, as an independent
+ * recipe: no log, no `variant_of` (that slug names a recipe in someone else's
+ * collection), and `source` pointing at the share link unless the recipe
+ * already credits one. Importing your own share returns the original.
+ */
+const IMPORTED_KEYS = new Set(["title", "kind", "tags", "servings", "time", "source", "formula"]);
+
+export async function importSharedRecipe(
+  userId: string,
+  token: string,
+  shareUrl: string,
+): Promise<{ slug: string; created: boolean }> {
+  const share = await resolveShare(token);
+  const file = share ? await getRecipeFile(share.userId, share.slug) : null;
+  if (!share || !file) throw new RecipeError("not_found", "This share link no longer works.");
+  if (share.userId === userId) return { slug: share.slug, created: false };
+
+  const parsed = parseOrThrow(file.markdown);
+  const markdown = editFrontmatter(file.markdown, (doc) => {
+    // Only the fields the share page shows travel: custom frontmatter keys
+    // the owner added are theirs, and variant_of names a recipe in their
+    // collection.
+    for (const pair of [...(doc.contents as { items?: { key: unknown }[] })?.items ?? []]) {
+      const key = String((pair.key as { value?: unknown })?.value ?? pair.key);
+      if (!IMPORTED_KEYS.has(key)) doc.delete(key);
+    }
+    if (!parsed.frontmatter.source) doc.set("source", shareUrl);
+  });
+  const frontmatterEnd = markdown.length - parsed.body.length;
+  const copy = markdown.slice(0, frontmatterEnd) + withoutLog(parsed.body).replace(/\s*$/, "\n");
+  const { slug } = await saveRecipe(userId, copy);
+  return { slug, created: true };
 }
 
 /**
