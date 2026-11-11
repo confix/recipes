@@ -5,6 +5,9 @@ export default [
   route("login", "routes/login.tsx"),
   route("signup", "routes/signup.tsx"),
   route("logout", "routes/logout.tsx"),
+  route("forgot-password", "routes/forgot-password.tsx"),
+  route("reset-password", "routes/reset-password.tsx"),
+  route("account/delete", "routes/account.delete.tsx"),
   route("imprint", "routes/imprint.tsx"),
   route("privacy", "routes/privacy.tsx"),
   // OAuth consent for MCP clients; OAuthProvider (workers/app.ts) owns the

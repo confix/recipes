@@ -10,10 +10,8 @@
 	// creates the DNS record and certificate.
 	"routes": [{ "pattern": "recipes.confix.run", "custom_domain": true }],
 	"workers_dev": false,
-	// Declared so `wrangler types` types them without a .dev.vars present.
-	// ALLOWED_EMAILS: who may sign up (app/lib/allowed-emails.ts). A secret
-	// rather than a var so the addresses stay out of the repository.
-	"secrets": { "required": ["BETTER_AUTH_SECRET", "ALLOWED_EMAILS"] },
+	// Declared so `wrangler types` types it without a .dev.vars present.
+	"secrets": { "required": ["BETTER_AUTH_SECRET"] },
 	// `assets.directory` is intentionally absent: the Cloudflare Vite plugin
 	// populates it from the client build output and emits a flattened
 	// build/server/wrangler.json at build time.
@@ -42,6 +40,23 @@
 	// scripts/provision.sh.
 	"ai": { "binding": "AI" },
 	"vectorize": [{ "binding": "VECTORIZE", "index_name": "recipes" }],
+	// Account emails: address confirmation and password reset
+	// (app/lib/mail.server.ts), through Cloudflare Email Sending. The sending
+	// domain must be onboarded once (README "Deploying"). `pnpm dev` does not
+	// send: wrangler writes each message to a local file and logs its path.
+	"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["recipes@confix.run"] }],
+	// Sign-up is public, so the auth forms are rate limited
+	// (app/lib/rate-limit.server.ts): per client IP, and per email address
+	// for anything that sends mail. Counters are per Cloudflare location and
+	// approximate; they stop floods, not a patient attacker. namespace_id is
+	// any number unique to this account; nothing to provision.
+	"ratelimits": [
+		{ "name": "AUTH_IP_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+		{ "name": "AUTH_EMAIL_LIMITER", "namespace_id": "1002", "simple": { "limit": 2, "period": 60 } }
+	],
+	// Daily: remove accounts that never confirmed their email address
+	// (app/lib/purge-unverified.server.ts).
+	"triggers": { "crons": ["17 3 * * *"] },
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",

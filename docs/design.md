@@ -1,6 +1,6 @@
 # Recipes v2 — API/MCP-first redesign
 
-Status: phases 1–4 implemented (2026-10-24).
+Status: phases 1–5 implemented; phase 6 (open sign-up, account deletion) in progress (2026-11-11).
 
 The v1 app (React Router UI, normalized D1 schema, fork tree, share links,
 BYOK credentials) is replaced. The new centre is an API + MCP server that lets
@@ -13,7 +13,7 @@ each user manage their recipes and find them quickly — including "something li
 | Source of truth | Markdown files in R2. Everything else is a derived, rebuildable index. |
 | Baking vs cooking | One recipe type with `kind: bake \| cook`. Bakes may add a weighted `formula` block; baker's % / hydration are derived from it. |
 | UI | Minimal: a public front page with MCP setup, sign-in and sign-up, search + list, a read-only recipe view for the kitchen, API tokens. No editor. |
-| Users | Multi-user. Each user has a private library; every storage key and index row is scoped by `user_id`. |
+| Users | Multi-user, open sign-up with a confirmed email address. Each user has a private library; every storage key and index row is scoped by `user_id`. Users can delete their account and everything in it. |
 | Validation | valibot (frontmatter and request bodies). |
 | Auth | Accounts via better-auth (kept from v1, social login). MCP uses OAuth (workers-oauth-provider, delegating login to better-auth). REST uses per-user personal access tokens (stored hashed in D1). |
 
@@ -151,3 +151,32 @@ recipes to markdown under their owner's prefix. The v1 tables stay in
      (`app/lib/i18n.ts`); `?lang=` > `lang` cookie > Accept-Language,
      resolved once in the root loader. SEO tags (canonical, hreflang, Open
      Graph, JSON-LD) come from one helper, `app/lib/seo.ts`.
+6. **Open sign-up, account deletion** (in progress):
+   - *Sign-up* is open; the `ALLOWED_EMAILS` allowlist is gone. better-auth's
+     `requireEmailVerification` keeps an account unusable until its owner
+     opens the emailed link; signing up with a taken address looks like
+     success (the owner gets a "you already have an account" email), so the
+     form does not reveal who has one. Accounts from the invite era were
+     marked verified by migration 0004. Password reset via
+     `/forgot-password` → `/reset-password`, which signs out every session.
+   - *Email* goes through the Cloudflare Email Sending binding (`EMAIL`),
+     plain text, in the requester's UI language (`app/lib/mail.server.ts`).
+   - *Rate limits* use the Workers Rate Limiting binding, not better-auth's:
+     the forms call better-auth in-process, which skips its limiter, and its
+     in-memory store is per isolate anyway. 10/min per IP and form, plus
+     2 emails/min per address (`app/lib/rate-limit.server.ts`).
+   - *Account deletion* (`/account/delete`, password required;
+     `app/lib/delete-account.server.ts`): first closes every way to write
+     behind it (OAuth grants, API tokens, sessions; `putRecipeFile` also
+     refuses users that no longer exist, since KV may serve a revoked token
+     for up to a minute), then deletes vectors (best-effort,
+     like every vector write: a leftover is inert once the D1 index is gone),
+     every R2 object under `u/<user_id>/`, the FTS rows, and finally the user
+     row, which cascades to everything else in D1. Each step is repeatable,
+     so a failure leaves an account that can simply delete itself again.
+     Not better-auth's `deleteUser`, which would also expose
+     `/api/auth/delete-user` without that cleanup.
+   - *Unconfirmed accounts* are deleted by a daily cron after two days
+     (`app/lib/purge-unverified.server.ts`), so nobody can hold someone
+     else's address. They cannot sign in, so they own nothing else.
+   - *Open*: changing the email address; social login.

@@ -2,9 +2,9 @@ import type { TKey, Translator } from "~/lib/i18n";
 import { safeNext } from "~/lib/safe-next";
 
 /**
- * Shared by the sign-in and sign-up actions: turn a better-auth response
- * (called with asResponse: true) into either an error to show or the
- * redirect that carries the new session.
+ * Shared by the auth form actions: turn a better-auth response (called with
+ * asResponse: true) into either an error to show or the redirect that
+ * carries the new session.
  */
 
 /** better-auth error codes we have our own, translated, wording for. */
@@ -14,17 +14,17 @@ const AUTH_ERRORS: Record<string, TKey> = {
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "auth.err.exists",
   PASSWORD_TOO_SHORT: "auth.err.passwordShort",
   INVALID_EMAIL: "auth.err.invalidEmail",
+  EMAIL_NOT_VERIFIED: "auth.err.notVerified",
+  INVALID_TOKEN: "reset.expired",
 };
 
 /**
  * better-auth error bodies are shaped { message, code } but that is not
- * guaranteed across versions. Known codes get our translated wording; a 403
- * is the sign-up allowlist (app/lib/auth.server.ts); anything else shows
- * better-auth's own (English) message, then a generic one rather than
- * rendering "undefined" at the user.
+ * guaranteed across versions. Known codes get our translated wording;
+ * anything else shows better-auth's own (English) message, then a generic one
+ * rather than rendering "undefined" at the user.
  */
-async function readAuthError(response: Response, fallback: string, { t }: Translator): Promise<string> {
-  if (response.status === 403) return t("auth.err.notInvited");
+export async function readAuthError(response: Response, fallback: string, { t }: Translator): Promise<string> {
   try {
     const body = (await response.json()) as { message?: string; code?: string };
     const known = body?.code ? AUTH_ERRORS[body.code] : undefined;

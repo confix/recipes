@@ -34,12 +34,13 @@ percentages and hydration; see docs/design.md.
 ```sh
 pnpm install
 echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" > .dev.vars
-echo "ALLOWED_EMAILS=*" >> .dev.vars   # who may sign up; see below
 pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
 
-Sign up at `/signup`, then point an MCP client at `http://localhost:5173/mcp`
+Sign up at `/signup`. Locally no email is sent: wrangler writes each message
+to a file and logs its path, so open it there to follow the confirmation
+link. Then point an MCP client at `http://localhost:5173/mcp`
 or create an API token on the home page. The home page also searches your
 recipes; `/r/<slug>` is a read-only view for the kitchen (`?scale=2` doubles it),
 and `/s/<token>` is a recipe someone shared by link.
@@ -87,20 +88,30 @@ One-time setup:
 | `CLOUDFLARE_ACCOUNT_ID` | Your account id (dashboard → Workers & Pages, right-hand side). |
 | `CLOUDFLARE_API_TOKEN` | An API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit** and **Account → Vectorize → Edit**, limited to that account; for zone permissions, include the `confix.run` zone, and add **Zone → DNS → Edit** if the deploy is refused permission to create the domain. |
 | `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Changing it signs everyone out. |
-| `ALLOWED_EMAILS` | Who may sign up: email addresses separated by commas, or `*` for anyone. |
 
 Sign up at https://recipes.confix.run; MCP clients connect to
 `https://recipes.confix.run/mcp`. Run `POST /api/reindex` once per user if recipes were added while
 embeddings were unavailable.
 
-Sign-up is invite-only: only addresses in `ALLOWED_EMAILS` can create an
-account, and if it is empty nobody can. To change the list, update the GitHub
-secret and redeploy (or `wrangler secret put ALLOWED_EMAILS`). Removing an
-address does not delete an account that already exists.
+Anyone can sign up. An account works once its owner has opened the
+confirmation link emailed to them; until then nobody can sign in with it.
+Account emails (confirmation, password reset, a receipt when an account is
+deleted) go out through [Cloudflare Email Sending](https://developers.cloudflare.com/email-service/)
+from `recipes@confix.run`. Onboard `confix.run` for sending once, under Email Service in the
+Cloudflare dashboard, or no mail goes out and nobody can finish signing up. The auth forms are rate limited per IP, and emails per
+address (the `ratelimits` in `wrangler.jsonc`); nothing to provision.
+
+Signed-in users can delete their account at `/account/delete`. That removes
+their recipes from R2, their vectors, their search index, sessions, API tokens
+and share links, and revokes every MCP client they connected.
+
+Deployments from before public sign-up still have an `ALLOWED_EMAILS` secret
+on the Worker, which nothing reads any more: `wrangler secret delete
+ALLOWED_EMAILS` removes it, and the GitHub secret of that name can go too.
 
 To deploy by hand: `wrangler login`, then
-`BETTER_AUTH_SECRET=… ALLOWED_EMAILS=… scripts/deploy.sh` (all can
-be left out after the first deploy; the Worker keeps them).
+`BETTER_AUTH_SECRET=… scripts/deploy.sh` (it can be left out after the
+first deploy; the Worker keeps it).
 
 ## MCP
 

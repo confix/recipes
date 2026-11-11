@@ -3,9 +3,10 @@ import { Form, Link, redirect, useNavigation, useSearchParams } from "react-rout
 import { Alert, AuthShell, Button, Field, textLinkClass } from "~/components/ui";
 import { finishAuth } from "~/lib/auth-form.server";
 import { getAuth, getSessionUser } from "~/lib/auth.server";
-import { getTranslator, translate, useT } from "~/lib/i18n";
+import { type TKey, getTranslator, translate, useT } from "~/lib/i18n";
 import { getLocale } from "~/lib/i18n.server";
-import { withNext } from "~/lib/safe-next";
+import { allowAuthRequest } from "~/lib/rate-limit.server";
+import { safeNext, withNext } from "~/lib/safe-next";
 import { rootData, seo } from "~/lib/seo";
 
 import type { Route } from "./+types/login";
@@ -21,9 +22,20 @@ export function meta({ matches }: Route.MetaArgs) {
   });
 }
 
+/**
+ * Also where the email confirmation link lands (see the sign-up action): on
+ * success the user arrives signed in and goes on to `next`; on failure with
+ * ?error=, and signing in sends a fresh link.
+ */
 export async function loader({ request }: Route.LoaderArgs) {
-  if (await getSessionUser(request)) throw redirect("/");
-  return null;
+  const params = new URL(request.url).searchParams;
+  if (await getSessionUser(request)) throw redirect(safeNext(params.get("next") ?? "/", request.url));
+  const notice: TKey | null = params.has("reset")
+    ? "login.passwordChanged"
+    : params.has("error")
+      ? "login.linkExpired"
+      : null;
+  return { notice };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -37,10 +49,12 @@ export async function action({ request }: Route.ActionArgs) {
   if (!email || !password) {
     return { error: t("auth.err.required") };
   }
+  if (!(await allowAuthRequest(request, "sign-in"))) return { error: t("auth.err.tooMany") };
 
   try {
     const response = await getAuth(request).api.signInEmail({
-      body: { email, password },
+      // Where a fresh confirmation link leads, if the email is unconfirmed.
+      body: { email, password, callbackURL: withNext("/login", safeNext(next, request.url)) },
       asResponse: true,
     });
     return await finishAuth(response, {
@@ -57,7 +71,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 }
 
-export default function Login({ actionData }: Route.ComponentProps) {
+export default function Login({ loaderData, actionData }: Route.ComponentProps) {
   const [params] = useSearchParams();
   const next = params.get("next") ?? "/";
   const busy = useNavigation().state === "submitting";
@@ -76,6 +90,11 @@ export default function Login({ actionData }: Route.ComponentProps) {
         </>
       }
     >
+      {loaderData.notice ? (
+        <div className="mb-6">
+          <Alert tone="warning">{t(loaderData.notice)}</Alert>
+        </div>
+      ) : null}
       <Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
         <Field label={t("field.email")} name="email" type="email" required autoComplete="email" autoFocus />
@@ -86,6 +105,11 @@ export default function Login({ actionData }: Route.ComponentProps) {
           required
           autoComplete="current-password"
           minLength={8}
+          hint={
+            <Link to="/forgot-password" className={textLinkClass}>
+              {t("login.forgot")}
+            </Link>
+          }
         />
         {actionData?.error ? <Alert>{actionData.error}</Alert> : null}
         <Button type="submit" disabled={busy} className="mt-2 w-full py-3">

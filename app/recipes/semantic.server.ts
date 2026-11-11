@@ -60,6 +60,16 @@ export async function deleteRecipeVector(userId: string, slug: string) {
   await env.VECTORIZE.deleteByIds([await vectorId(userId, slug)]);
 }
 
+/** Vectorize deletes at most this many ids per call. */
+const DELETE_BATCH = 1000;
+
+export async function deleteRecipeVectors(userId: string, slugs: string[]) {
+  const ids = await Promise.all(slugs.map((slug) => vectorId(userId, slug)));
+  for (let i = 0; i < ids.length; i += DELETE_BATCH) {
+    await env.VECTORIZE.deleteByIds(ids.slice(i, i + DELETE_BATCH));
+  }
+}
+
 /** The stored vector for a recipe, or null if it has none (yet). */
 export async function storedVector(
   userId: string,

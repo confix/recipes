@@ -19,5 +19,5 @@ export const auth = betterAuth({
     // D1 cannot open interactive transactions; the adapter must not try.
     transaction: false,
   }),
-  emailAndPassword: { enabled: true },
+  emailAndPassword: { enabled: true, requireEmailVerification: true },
 });
