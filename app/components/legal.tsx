@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-import { Alert, LegalLinks, Logo, Ornament } from "~/components/ui";
+import { LegalLinks, Logo, Ornament } from "~/components/ui";
 import { useT } from "~/lib/i18n";
-import type { Operator } from "~/lib/imprint";
+import { OPERATOR } from "~/lib/operator";
 
 /** Long-form legal text, set like the back matter of a book. */
 export function LegalPage({
@@ -50,12 +50,10 @@ export function Section({ title, children }: { title: string; children: ReactNod
   );
 }
 
-/** The operator's name, address and email, or a visible gap if unset. */
-export function OperatorAddress({ operator }: { operator: Operator | null }) {
+/** The operator's name, address and email. */
+export function OperatorAddress() {
   const { t } = useT();
-  if (!operator) {
-    return <Alert>{t("legal.noOperator")}</Alert>;
-  }
+  const operator = OPERATOR;
   return (
     <address className="not-italic">
       <span className="block">{operator.name}</span>

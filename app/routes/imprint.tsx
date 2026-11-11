@@ -1,6 +1,6 @@
 import { LegalPage, OperatorAddress, Section } from "~/components/legal";
 import { translate, useT } from "~/lib/i18n";
-import { getOperator } from "~/lib/operator.server";
+import { OPERATOR } from "~/lib/operator";
 import { rootData, seo } from "~/lib/seo";
 
 import type { Route } from "./+types/imprint";
@@ -14,16 +14,12 @@ export function meta({ matches }: Route.MetaArgs) {
   });
 }
 
-export function loader() {
-  return { operator: getOperator() };
-}
-
-export default function Imprint({ loaderData: { operator } }: Route.ComponentProps) {
+export default function Imprint() {
   const { t, rich } = useT();
   return (
     <LegalPage eyebrow={t("imprint.eyebrow")} title={t("imprint.title")}>
       <Section title={t("imprint.info")}>
-        <OperatorAddress operator={operator} />
+        <OperatorAddress />
         <p className="text-muted italic">{t("imprint.private")}</p>
         <p className="text-muted italic">
           {rich("imprint.personal", {
@@ -37,7 +33,7 @@ export default function Imprint({ loaderData: { operator } }: Route.ComponentPro
       </Section>
 
       <Section title={t("imprint.responsible")}>
-        <p>{t("imprint.atAddress", { name: operator?.name ?? t("imprint.operatorFallback") })}</p>
+        <p>{t("imprint.atAddress", { name: OPERATOR.name })}</p>
       </Section>
 
       <Section title={t("imprint.recipes")}>
