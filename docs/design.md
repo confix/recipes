@@ -92,10 +92,16 @@ Free-form markdown: intro, ingredients (for cook recipes), method, notes.
 | `search_recipes(query?, kind?, tags?, max_minutes?, limit?)` | Hybrid: structured filters → FTS5 + vector, merged by reciprocal rank. |
 | `find_similar(slug \| text, kind?, limit?)` | Nearest neighbours in Vectorize. |
 | `get_recipe(slug)` | Raw markdown + derived data (baker's %, hydration, last cooked). |
+| `scale_recipe(slug, factor \| servings)` | Ingredients and formula scaled; read-only. |
 | `save_recipe(markdown, slug?)` | Validate frontmatter, write to R2, reindex. |
 | `log_cook(slug, date?, rating?, notes)` | Append to `## Log`, reindex. |
 | `list_tags()` | Tags with counts, for consistent tagging. |
 | `delete_recipe(slug)` | Remove from R2 and indexes. |
+| `share_recipe(slug)` / `unshare_recipe(slug)` | Public read-only link at `/s/:token`, or switch it off. |
+
+Every recipe in a result carries `url` (`<origin>/r/<slug>`, the owner's
+page), built from the origin the client connected to, so the model can link
+the user to a recipe rather than name a slug.
 
 REST mirrors these under `/api/recipes` (see README). `/api/tokens` is
 session-only, so a leaked token cannot mint more.
@@ -103,9 +109,9 @@ session-only, so a leaked token cannot mint more.
 ## Removed from v1
 
 React editor/routes, normalized
-`ingredients`/`steps`/`tags` tables, fork tree, share links, AI credential
-storage, freeform parser UI. Share links are dropped for now (could return
-as sharing between users later). `scripts/export-v1.ts` converts existing D1
+`ingredients`/`steps`/`tags` tables, fork tree, v1 share links, AI credential
+storage, freeform parser UI. (Share links came back in phase 5, over the
+markdown files.) `scripts/export-v1.ts` converts existing D1
 recipes to markdown under their owner's prefix. The v1 tables stay in
 `app/db/schema/legacy.ts` until that has run, then get dropped.
 
@@ -130,3 +136,18 @@ recipes to markdown under their owner's prefix. The v1 tables stay in
    reader's browser call other hosts. The home page searches
    and lists recipes. A file that no longer parses is shown raw, with its
    problems.
+5. **Sharing, scaling, languages** ✅:
+   - *Share links.* `recipe_shares` (D1) maps a 128-bit token to
+     `(user_id, slug)`. `/s/:token` needs no session and renders the file
+     minus its `## Log` (the log is the owner's diary). Signed-in visitors can
+     import an independent copy: no log, no `variant_of`, `source` set to the
+     link unless already credited. Links are revoked, not deleted; deleting
+     the recipe revokes them. Shared pages are `noindex`.
+   - *Scaling* (`app/recipes/scale.ts`, pure): formula grams, the leading
+     number of `servings`, and the leading quantity of list items under an
+     Ingredients/Zutaten heading. Method prose is never touched (times and
+     temperatures don't scale). `?scale=` on the page, `scale_recipe` over MCP.
+   - *UI languages*: English and German via a typed dictionary
+     (`app/lib/i18n.ts`); `?lang=` > `lang` cookie > Accept-Language,
+     resolved once in the root loader. SEO tags (canonical, hreflang, Open
+     Graph, JSON-LD) come from one helper, `app/lib/seo.ts`.

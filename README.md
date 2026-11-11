@@ -35,13 +35,15 @@ percentages and hydration; see docs/design.md.
 pnpm install
 echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" > .dev.vars
 echo "ALLOWED_EMAILS=*" >> .dev.vars   # who may sign up; see below
+echo 'IMPRINT="Jane Doe\nExample St 1\n12345 Berlin\njane@example.com"' >> .dev.vars
 pnpm exec wrangler d1 migrations apply recipes-db --local
 pnpm dev
 ```
 
 Sign up at `/signup`, then point an MCP client at `http://localhost:5173/mcp`
 or create an API token on the home page. The home page also searches your
-recipes; `/r/<slug>` is a read-only view for the kitchen.
+recipes; `/r/<slug>` is a read-only view for the kitchen (`?scale=2` doubles it),
+and `/s/<token>` is a recipe someone shared by link.
 
 Local data lives in `.wrangler/state`. (Checkouts from before the deploy setup
 kept it under a placeholder id; re-run the migrations command above once to get
@@ -87,6 +89,7 @@ One-time setup:
 | `CLOUDFLARE_API_TOKEN` | An API token from the "Edit Cloudflare Workers" template, plus **Account → D1 → Edit** and **Account → Vectorize → Edit**, limited to that account; for zone permissions, include the `confix.run` zone, and add **Zone → DNS → Edit** if the deploy is refused permission to create the domain. |
 | `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Changing it signs everyone out. |
 | `ALLOWED_EMAILS` | Who may sign up: email addresses separated by commas, or `*` for anyone. |
+| `IMPRINT` | The operator for the legally required imprint (§ 5 DDG) and privacy policy: name, postal address and contact email, one per line. Kept out of the repository on purpose. |
 
 Sign up at https://recipes.confix.run; MCP clients connect to
 `https://recipes.confix.run/mcp`. Run `POST /api/reindex` once per user if recipes were added while
@@ -98,8 +101,8 @@ secret and redeploy (or `wrangler secret put ALLOWED_EMAILS`). Removing an
 address does not delete an account that already exists.
 
 To deploy by hand: `wrangler login`, then
-`BETTER_AUTH_SECRET=… ALLOWED_EMAILS=… scripts/deploy.sh` (both can be left
-out after the first deploy; the Worker keeps them).
+`BETTER_AUTH_SECRET=… ALLOWED_EMAILS=… IMPRINT=… scripts/deploy.sh` (all can
+be left out after the first deploy; the Worker keeps them).
 
 ## MCP
 
@@ -111,9 +114,11 @@ OAuth: the client registers itself, you sign in and approve it on
 claude mcp add --transport http recipes https://recipes.confix.run/mcp
 ```
 
-Tools: `search_recipes`, `find_similar`, `get_recipe`, `save_recipe`,
-`log_cook`, `list_tags`, `delete_recipe`. The server's instructions teach the client the
-recipe format.
+Tools: `search_recipes`, `find_similar`, `get_recipe`, `scale_recipe`,
+`save_recipe`, `log_cook`, `share_recipe`, `unshare_recipe`, `list_tags`,
+`delete_recipe`. The server's instructions teach the client the recipe format.
+Every recipe in a tool result carries its web `url`, so the assistant can link
+you straight to the page.
 
 ## API
 

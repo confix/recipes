@@ -29,19 +29,21 @@ vi.mock("~/recipes/service.server", () => {
     deleteRecipe: vi.fn(),
     listTags: vi.fn(async () => []),
     logCook: vi.fn(),
+    shareRecipe: vi.fn(async () => "AAAAAAAAAAAAAAAAAAAAAA"),
+    unshareRecipe: vi.fn(async () => true),
   };
 });
 
 const service = await import("~/recipes/service.server");
 const { createRecipesMcpServer } = await import("./server");
 
-async function connect() {
+async function connect(origin = "https://recipes.test") {
   const [client, server] = InMemoryTransport.createLinkedPair();
   const pending = new Map<number, (message: JSONRPCMessage) => void>();
   client.onmessage = (message) => {
     if ("id" in message) pending.get(message.id as number)?.(message);
   };
-  await createRecipesMcpServer().connect(server);
+  await createRecipesMcpServer({ origin }).connect(server);
   await client.start();
 
   let id = 0;
@@ -92,6 +94,49 @@ describe("MCP tools", () => {
     const { result } = await call("save_recipe", { markdown: "x" });
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toBe("invalid: Recipe is not valid.\n- kind: bad");
+  });
+
+  it("links every recipe in a result to its web page", async () => {
+    auth.props = { userId: "user-a" };
+    vi.mocked(service.searchRecipes).mockResolvedValueOnce([{ slug: "dal" } as never]);
+    const call = await connect();
+    const { result } = await call("search_recipes", {});
+    expect(JSON.parse(result.content[0].text)).toEqual([
+      { slug: "dal", url: "https://recipes.test/r/dal" },
+    ]);
+  });
+
+  it("share_recipe returns a public link on the connected origin", async () => {
+    auth.props = { userId: "user-a" };
+    const call = await connect();
+    const { result } = await call("share_recipe", { slug: "dal" });
+    expect(service.shareRecipe).toHaveBeenCalledWith("user-a", "dal");
+    expect(JSON.parse(result.content[0].text)).toMatchObject({
+      share_url: "https://recipes.test/s/AAAAAAAAAAAAAAAAAAAAAA",
+      url: "https://recipes.test/r/dal",
+    });
+  });
+
+  it("scale_recipe scales ingredients by factor or to servings", async () => {
+    auth.props = { userId: "user-a" };
+    vi.mocked(service.getRecipeSource).mockResolvedValue({
+      slug: "dal",
+      etag: "e",
+      markdown: "---\ntitle: Dal\nkind: cook\nservings: 2\n---\n\n## Ingredients\n- 200 g lentils\n\n## Log\n- 2026-01-01 ★5\n",
+    });
+    const call = await connect();
+
+    const byServings = (await call("scale_recipe", { slug: "dal", servings: 6 })).result;
+    expect(byServings.content[0].text).toContain("- 600 g lentils");
+    expect(byServings.content[0].text).not.toContain("★5");
+    expect(JSON.parse(byServings.content[1].text)).toMatchObject({
+      factor: 3,
+      servings: "6",
+      url: "https://recipes.test/r/dal?scale=3",
+    });
+
+    const both = (await call("scale_recipe", { slug: "dal", factor: 2, servings: 4 })).result;
+    expect(both.isError).toBe(true);
   });
 
   it("find_similar takes exactly one of slug or text", async () => {

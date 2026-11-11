@@ -97,5 +97,30 @@ export const apiTokens = sqliteTable(
   (t) => [index("api_tokens_user_idx").on(t.userId)],
 );
 
+/**
+ * Public read-only links to one recipe. The token is the whole credential:
+ * /s/:token never needs a session, and the owner and slug come from this row,
+ * never from the URL. 128 random bits, not derived from anything.
+ *
+ * Revoked rather than deleted, so an old link reads as gone. Deleting the
+ * recipe revokes its links (app/recipes/service.server.ts).
+ */
+export const recipeShares = sqliteTable(
+  "recipe_shares",
+  {
+    token: text("token").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("recipe_shares_user_slug_idx").on(t.userId, t.slug)],
+);
+
 export type RecipeIndexRow = typeof recipeIndex.$inferSelect;
 export type ApiToken = typeof apiTokens.$inferSelect;
+export type RecipeShare = typeof recipeShares.$inferSelect;

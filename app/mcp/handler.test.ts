@@ -72,7 +72,10 @@ describe("/mcp", () => {
       "list_tags",
       "log_cook",
       "save_recipe",
+      "scale_recipe",
       "search_recipes",
+      "share_recipe",
+      "unshare_recipe",
     ]);
     for (const tool of tools) {
       expect(tool.inputSchema).toMatchObject({ type: "object" });
