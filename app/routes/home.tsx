@@ -41,7 +41,8 @@ export function meta({ loaderData, matches }: Route.MetaArgs) {
 export async function loader({ request }: Route.LoaderArgs) {
   const mcpUrl = `${new URL(request.url).origin}/mcp`;
   const user = await getSessionUser(request);
-  if (!user) return { user: null, mcpUrl };
+  // ?deleted: where deleting an account lands (routes/account.delete.tsx).
+  if (!user) return { user: null, mcpUrl, deleted: new URL(request.url).searchParams.has("deleted") };
 
   const query = new URL(request.url).searchParams.get("q")?.trim().slice(0, 500) ?? "";
   const [recipes, tokens] = await Promise.all([
@@ -72,7 +73,7 @@ export async function action({ request }: Route.ActionArgs) {
  * (/r/:slug) and issues API tokens. It is laid out as a cookbook's index.
  */
 export default function Home({ loaderData, actionData }: Route.ComponentProps) {
-  if (!loaderData.user) return <Landing mcpUrl={loaderData.mcpUrl} />;
+  if (!loaderData.user) return <Landing mcpUrl={loaderData.mcpUrl} deleted={loaderData.deleted} />;
   const { user, mcpUrl, query, recipes, tokens } = loaderData;
   // A GET navigation from this page is a search in flight.
   const searching = useNavigation().formMethod === "GET";
@@ -165,6 +166,19 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           open={actionData != null}
         >
           <TokensSection tokens={tokens} actionData={actionData} />
+        </Appendix>
+
+        <Appendix
+          letter="C"
+          title={t("home.accountTitle")}
+          description={t("home.accountDescription", { email: user.email })}
+        >
+          <p className="text-lg">
+            {t("home.deleteHint")}{" "}
+            <Link to="/account/delete" className="text-red underline underline-offset-[3px]">
+              {t("home.deleteLink")}
+            </Link>
+          </p>
         </Appendix>
       </section>
 

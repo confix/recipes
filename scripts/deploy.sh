@@ -4,9 +4,9 @@
 #
 # Environment:
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  (or `wrangler login`)
-#   BETTER_AUTH_SECRET  Worker secrets, uploaded with the deploy when set.
-#   ALLOWED_EMAILS      Both are required the first time; later deploys keep
-#                       the previous values for any that are unset.
+#   BETTER_AUTH_SECRET  Worker secret, uploaded with the deploy when set.
+#                       Required the first time; later deploys keep the
+#                       previous value when it is unset.
 #   DEPLOY_MESSAGE      optional label for the Worker version
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -23,7 +23,7 @@ pnpm exec wrangler d1 migrations apply recipes-db --remote
 
 # 3. Build, without credentials in reach of Vite plugins. `wrangler deploy`
 #    then reads build/server/wrangler.json.
-env -u CLOUDFLARE_API_TOKEN -u BETTER_AUTH_SECRET -u ALLOWED_EMAILS pnpm build
+env -u CLOUDFLARE_API_TOKEN -u BETTER_AUTH_SECRET pnpm build
 
 # 4. Pin the KV namespace in the generated config only. wrangler.jsonc stays
 #    id-less, so local dev and other accounts need no edits.
@@ -37,16 +37,16 @@ node -e '
   fs.writeFileSync(path, JSON.stringify(config));
 ' "$kv_id"
 
-# 5. Deploy, with whichever Worker secrets are given. The file never outlives
+# 5. Deploy, with the Worker secret if given. The file never outlives
 #    this script and is readable only by us.
 args=()
 if [[ -n "${DEPLOY_MESSAGE:-}" ]]; then args+=(--message "$DEPLOY_MESSAGE"); fi
-if [[ -n "${BETTER_AUTH_SECRET:-}${ALLOWED_EMAILS:-}" ]]; then
+if [[ -n "${BETTER_AUTH_SECRET:-}" ]]; then
   secrets_file=$(umask 077 && mktemp)
   trap 'rm -f "$secrets_file"' EXIT
   node -e '
     const secrets = {};
-    for (const name of ["BETTER_AUTH_SECRET", "ALLOWED_EMAILS"]) {
+    for (const name of ["BETTER_AUTH_SECRET"]) {
       if (process.env[name]) secrets[name] = process.env[name];
     }
     process.stdout.write(JSON.stringify(secrets));

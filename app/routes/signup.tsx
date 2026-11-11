@@ -5,7 +5,8 @@ import { finishAuth } from "~/lib/auth-form.server";
 import { getAuth, getSessionUser } from "~/lib/auth.server";
 import { getTranslator, translate, useT } from "~/lib/i18n";
 import { getLocale } from "~/lib/i18n.server";
-import { withNext } from "~/lib/safe-next";
+import { allowAuthRequest } from "~/lib/rate-limit.server";
+import { safeNext, withNext } from "~/lib/safe-next";
 import { rootData, seo } from "~/lib/seo";
 
 import type { Route } from "./+types/signup";
@@ -28,7 +29,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
-  const name = String(form.get("name") ?? "").trim();
+  const name = String(form.get("name") ?? "").trim().slice(0, 100);
   const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "");
   const next = String(form.get("next") ?? "/");
@@ -38,14 +39,23 @@ export async function action({ request }: Route.ActionArgs) {
   if (!email || !password) {
     return { error: t("auth.err.required") };
   }
+  if (!(await allowAuthRequest(request, "sign-up"))) return { error: t("auth.err.tooMany") };
 
   try {
-    // Who may sign up is decided in auth.server.ts (the email allowlist);
-    // its refusal comes back here as an error message.
     const response = await getAuth(request).api.signUpEmail({
-      body: { email, password, name: name || email.split("@")[0] },
+      body: {
+        email,
+        password,
+        name: name || email.split("@")[0],
+        // The confirmation link signs the user in and lands on /login,
+        // which sends them on to `next`.
+        callbackURL: withNext("/login", safeNext(next, request.url)),
+      },
       asResponse: true,
     });
+    // No session until the address is confirmed (auth.server.ts). A taken
+    // address gives this same answer, by design.
+    if (response.ok && !response.headers.get("set-cookie")) return { sent: email };
     return await finishAuth(response, {
       request,
       next,
@@ -62,6 +72,17 @@ export default function Signup({ actionData }: Route.ComponentProps) {
   const next = params.get("next") ?? "/";
   const busy = useNavigation().state === "submitting";
   const { t } = useT();
+
+  if (actionData && "sent" in actionData && actionData.sent) {
+    return (
+      <AuthShell title={t("signup.checkTitle")} subtitle={t("signup.checkSubtitle")}>
+        <div className="flex flex-col gap-3 text-center text-lg">
+          <p>{t("signup.checkBody", { email: actionData.sent })}</p>
+          <p className="text-muted italic">{t("signup.checkHint")}</p>
+        </div>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
@@ -89,7 +110,7 @@ export default function Signup({ actionData }: Route.ComponentProps) {
           minLength={8}
           hint={t("field.passwordHint")}
         />
-        {actionData?.error ? <Alert>{actionData.error}</Alert> : null}
+        {actionData && "error" in actionData ? <Alert>{actionData.error}</Alert> : null}
         <Button type="submit" disabled={busy} className="mt-2 w-full py-3">
           {busy ? t("signup.creating") : t("signup.create")}
         </Button>

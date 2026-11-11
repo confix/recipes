@@ -29,6 +29,13 @@
       "when": 1794401179957,
       "tag": "0003_recipe_shares",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794424265606,
+      "tag": "0004_existing_users_verified",
+      "breakpoints": true
     }
   ]
 }

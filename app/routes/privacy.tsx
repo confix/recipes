@@ -73,8 +73,21 @@ function PrivacyEn() {
       <Section title="Your account">
         <p>
           To create an account we store your name, your email address, and your password as a
-          one-way hash, never in plain text. Sign-up is limited to invited email addresses. Legal
-          basis: Art. 6 (1) (b) GDPR, as this is needed to provide the service you signed up for.
+          one-way hash, never in plain text. Legal basis: Art. 6 (1) (b) GDPR, as this is needed
+          to provide the service you signed up for.
+        </p>
+        <p>
+          To make sure the address is yours, we email you a link; until you open it, the account
+          cannot be used. We also email you a link when you ask to reset your password, and a
+          short receipt when you delete your account. These emails are sent through Cloudflare
+          Email Sending, as our processor, which handles your address and the message to deliver
+          it. Legal basis: Art. 6 (1) (b) GDPR.
+        </p>
+        <p>
+          To stop password guessing and mass sign-ups, sign-in, sign-up and password forms count
+          attempts per IP address, and emails per address, for one minute. The counters are kept
+          by Cloudflare and are not stored any longer. Legal basis: Art. 6 (1) (f) GDPR; our
+          legitimate interest is protecting accounts and the service from abuse.
         </p>
       </Section>
 
@@ -148,8 +161,14 @@ function PrivacyEn() {
       <Section title="How long we keep data">
         <p>
           Account data and recipes are kept for as long as your account exists. A recipe you
-          delete is removed with its search entry, and its share links stop working. To delete
-          your account and everything in it, email the address above.
+          delete is removed with its search entry, and its share links stop working.
+        </p>
+        <p>
+          You can delete your account yourself at any time, under “Your account” on your index
+          page. That immediately removes your account, your recipes and their fingerprints and
+          search entries, your share links, API tokens and sessions, and disconnects every app
+          you connected. An account whose email address is never confirmed is deleted
+          automatically after two days.
         </p>
       </Section>
 
@@ -217,9 +236,23 @@ function PrivacyDe() {
       <Section title="Dein Konto">
         <p>
           Für ein Konto speichern wir deinen Namen, deine E-Mail-Adresse und dein Passwort als
-          Einweg-Hash, niemals im Klartext. Registrieren können sich nur eingeladene
-          E-Mail-Adressen. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO, da dies für den Dienst nötig
-          ist, für den du dich angemeldet hast.
+          Einweg-Hash, niemals im Klartext. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO, da dies
+          für den Dienst nötig ist, für den du dich angemeldet hast.
+        </p>
+        <p>
+          Damit sicher ist, dass die Adresse dir gehört, schicken wir dir einen Link; bis du ihn
+          öffnest, lässt sich das Konto nicht nutzen. Außerdem schicken wir dir einen Link, wenn du
+          dein Passwort zurücksetzen willst, und eine kurze Bestätigung, wenn du dein Konto
+          löschst. Diese E-Mails werden über Cloudflare Email Sending als unserem
+          Auftragsverarbeiter verschickt, das dafür deine Adresse und die Nachricht verarbeitet.
+          Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.
+        </p>
+        <p>
+          Gegen das Erraten von Passwörtern und massenhafte Registrierungen zählen die Formulare
+          für Anmeldung, Registrierung und Passwort eine Minute lang die Versuche je IP-Adresse und
+          die E-Mails je Adresse. Die Zähler führt Cloudflare; länger werden sie nicht gespeichert.
+          Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist der Schutz
+          der Konten und des Dienstes vor Missbrauch.
         </p>
       </Section>
 
@@ -299,8 +332,14 @@ function PrivacyDe() {
         <p>
           Kontodaten und Rezepte bleiben gespeichert, solange dein Konto besteht. Ein gelöschtes
           Rezept wird mit seinem Sucheintrag entfernt, und seine Links zum Teilen funktionieren
-          nicht mehr. Um dein Konto mit allem darin zu löschen, schreib an die oben genannte
-          E-Mail-Adresse.
+          nicht mehr.
+        </p>
+        <p>
+          Du kannst dein Konto jederzeit selbst löschen, unter „Dein Konto“ auf deiner
+          Register-Seite. Damit werden sofort dein Konto, deine Rezepte samt Fingerabdrücken und
+          Sucheinträgen, deine Links zum Teilen, API-Tokens und Sitzungen entfernt und alle
+          verbundenen Apps getrennt. Ein Konto, dessen E-Mail-Adresse nie bestätigt wird, wird
+          nach zwei Tagen automatisch gelöscht.
         </p>
       </Section>
 

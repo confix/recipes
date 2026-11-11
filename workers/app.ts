@@ -1,6 +1,7 @@
 import { OAuthProvider, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { RouterContextProvider, createRequestHandler } from "react-router";
 
+import { purgeUnverifiedAccounts } from "~/lib/purge-unverified.server";
 import { oauthHelpersContext } from "~/mcp/oauth-context";
 import { createRecipesMcpHandler } from "~/mcp/handler";
 
@@ -83,5 +84,11 @@ export default {
     // requests. A per-request child object keeps one origin's helpers — with
     // its issuer and resource — from leaking into another origin's requests.
     return provider.fetch(request, Object.create(env) as OAuthEnv, ctx);
+  },
+
+  /** The daily cron in wrangler.jsonc. */
+  async scheduled() {
+    const purged = await purgeUnverifiedAccounts();
+    if (purged) console.log(`Purged ${purged} unconfirmed account(s).`);
   },
 } satisfies ExportedHandler<Env>;

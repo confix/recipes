@@ -1,10 +1,11 @@
-import { env } from "cloudflare:workers";
+import { env, waitUntil } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { getDb, schema } from "~/db";
-import { isEmailAllowed } from "~/lib/allowed-emails";
+import { DEFAULT_LOCALE } from "~/lib/i18n";
+import { getLocale } from "~/lib/i18n.server";
+import { type AccountMail, sendAccountMail } from "~/lib/mail.server";
 
 /**
  * Build the auth instance for the current request.
@@ -18,6 +19,19 @@ import { isEmailAllowed } from "~/lib/allowed-emails";
  * (the CLI needs a statically importable config). Keep the two in sync.
  */
 export function getAuth(request?: Request) {
+  const origin = request ? new URL(request.url).origin : undefined;
+  // Emails go out in the language of the page that triggered them.
+  const locale = request ? getLocale(request) : DEFAULT_LOCALE;
+  // Never throws: a mail error that only happens for some addresses would
+  // tell the visitor which ones have an account.
+  const mailQuietly = async (...[kind, user, vars]: [AccountMail, { name: string; email: string }, Record<string, string>]) => {
+    try {
+      await sendAccountMail(kind, user, locale, vars);
+    } catch (error) {
+      console.error(`Could not send ${kind} mail:`, error);
+    }
+  };
+
   return betterAuth({
     database: drizzleAdapter(getDb(), {
       provider: "sqlite",
@@ -35,22 +49,44 @@ export function getAuth(request?: Request) {
     secret: env.BETTER_AUTH_SECRET,
     // Derived from the request rather than configured, so local dev, preview
     // URLs, and production all work without a per-environment host var.
-    baseURL: request ? new URL(request.url).origin : undefined,
-    emailAndPassword: { enabled: true },
-    databaseHooks: {
-      user: {
-        create: {
-          // Every way of creating an account ends here, so this is the one
-          // place sign-up is restricted. See app/lib/allowed-emails.ts.
-          async before(user) {
-            if (!isEmailAllowed(user.email, env.ALLOWED_EMAILS)) {
-              throw new APIError("FORBIDDEN", {
-                message: "Sign-up is invite-only, and this email is not on the list.",
-              });
-            }
-          },
-        },
+    baseURL: origin,
+    // Anyone can sign up, so an account only becomes usable once its owner
+    // has clicked the link sent to the address. Until then nobody can sign
+    // in with it, and signing up again with a taken address looks exactly
+    // like a fresh sign-up (the owner gets an email instead), so the form
+    // does not reveal who has an account.
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: true,
+      revokeSessionsOnPasswordReset: true,
+      async sendResetPassword({ user, url }) {
+        await mailQuietly("reset", user, { url });
       },
+      async onExistingUserSignUp({ user }) {
+        await mailQuietly("existing", user, {
+          login: `${origin}/login`,
+          reset: `${origin}/forgot-password`,
+        });
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      // Signing in unverified sends a fresh link: the way to get a new one.
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      expiresIn: 60 * 60 * 24,
+      async sendVerificationEmail({ user, url }) {
+        await mailQuietly("verify", user, { url });
+      },
+    },
+    advanced: {
+      // Cloudflare's header for the client IP. better-auth's own rate limiter
+      // (in-memory, so per isolate) keys on it for direct /api/auth calls;
+      // the real limits are in app/lib/rate-limit.server.ts.
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
+      // Mail goes out after the response. Awaiting it would make a known
+      // address measurably slower to answer than an unknown one.
+      backgroundTasks: { handler: waitUntil },
     },
   });
 }

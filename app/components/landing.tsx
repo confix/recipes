@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { MCP_TOOLS, McpSetup } from "~/components/mcp-setup";
-import { LegalLinks, Logo, Ornament } from "~/components/ui";
+import { Alert, LegalLinks, Logo, Ornament } from "~/components/ui";
 import { type TKey, useT } from "~/lib/i18n";
 
 /**
@@ -27,7 +27,7 @@ const RUNINS = [
   ["landing.stove.title", "landing.stove.body"],
 ] as const satisfies readonly (readonly [TKey, TKey])[];
 
-export function Landing({ mcpUrl }: { mcpUrl: string }) {
+export function Landing({ mcpUrl, deleted }: { mcpUrl: string; deleted?: boolean }) {
   const { t, rich } = useT();
   return (
     <div className="mx-auto min-h-screen max-w-4xl px-5 sm:px-8">
@@ -45,6 +45,12 @@ export function Landing({ mcpUrl }: { mcpUrl: string }) {
           </Link>
         </nav>
       </header>
+
+      {deleted ? (
+        <div className="mx-auto mt-8 max-w-xl">
+          <Alert tone="warning">{t("landing.deleted")}</Alert>
+        </div>
+      ) : null}
 
       <section className="py-20 text-center sm:py-28">
         <p className="text-muted smallcaps">{t("landing.edition")}</p>

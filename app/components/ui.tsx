@@ -48,6 +48,7 @@ const buttonVariants = {
   secondary: "border border-ink text-ink hover:bg-ink hover:text-paper",
   ghost: "text-muted hover:text-red",
   danger: "text-red hover:underline",
+  destructive: "bg-red text-paper hover:bg-ink",
 };
 
 export function Button({
