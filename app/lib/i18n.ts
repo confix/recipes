@@ -270,7 +270,6 @@ const en = {
   "imprint.personal": "This is a personal website. For quebi GmbH, see the imprint at {link}.",
   "imprint.responsible": "Responsible for content pursuant to § 18 (2) MStV",
   "imprint.atAddress": "{name}, at the address above.",
-  "imprint.operatorFallback": "The operator named above",
   "imprint.recipes": "Your recipes",
   "imprint.recipesText":
     "Each recipe belongs to the account that saved it and is visible only to that account, unless its owner shares it by link. Shared recipes are their owner’s content. The operator does not publish or review what users store; to report unlawful content, write to the email address above.",
@@ -280,7 +279,6 @@ const en = {
 
   "legal.back": "← Back",
   "legal.email": "Email",
-  "legal.noOperator": "The operator’s details have not been configured (the IMPRINT setting).",
 } as const;
 
 export type TKey = keyof typeof en;
@@ -527,7 +525,6 @@ const de: Dict = {
   "imprint.personal": "Dies ist eine private Website. Für die quebi GmbH siehe das Impressum auf {link}.",
   "imprint.responsible": "Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV",
   "imprint.atAddress": "{name}, Anschrift wie oben.",
-  "imprint.operatorFallback": "Der oben genannte Betreiber",
   "imprint.recipes": "Deine Rezepte",
   "imprint.recipesText":
     "Jedes Rezept gehört dem Konto, das es gespeichert hat, und ist nur für dieses Konto sichtbar, es sei denn, es wird per Link geteilt. Geteilte Rezepte sind Inhalte ihrer Eigentümer. Der Betreiber veröffentlicht oder prüft nicht, was Nutzer speichern; rechtswidrige Inhalte bitte an die oben genannte E-Mail-Adresse melden.",
@@ -537,7 +534,6 @@ const de: Dict = {
 
   "legal.back": "← Zurück",
   "legal.email": "E-Mail",
-  "legal.noOperator": "Die Angaben zum Betreiber sind nicht eingerichtet (die Einstellung IMPRINT).",
 };
 
 const DICTS: Record<Locale, Dict> = { en, de };

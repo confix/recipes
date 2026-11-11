@@ -2,8 +2,6 @@ import { Link } from "react-router";
 
 import { LegalPage, OperatorAddress, Section } from "~/components/legal";
 import { translate, useT } from "~/lib/i18n";
-import type { Operator } from "~/lib/imprint";
-import { getOperator } from "~/lib/operator.server";
 import { rootData, seo } from "~/lib/seo";
 
 import type { Route } from "./+types/privacy";
@@ -17,10 +15,6 @@ export function meta({ matches }: Route.MetaArgs) {
   });
 }
 
-export function loader() {
-  return { operator: getOperator() };
-}
-
 /**
  * Keep this in step with what the app actually stores: the better-auth
  * tables, API tokens and share links (app/db/schema), recipes in R2 + D1,
@@ -31,18 +25,18 @@ export function loader() {
  * Written out per language rather than through the UI dictionary: it is
  * structured prose. Change both versions together.
  */
-export default function Privacy({ loaderData: { operator } }: Route.ComponentProps) {
+export default function Privacy() {
   const { t, locale } = useT();
   return (
     <LegalPage eyebrow={t("privacy.eyebrow")} title={t("privacy.title")}>
-      {locale === "de" ? <PrivacyDe operator={operator} /> : <PrivacyEn operator={operator} />}
+      {locale === "de" ? <PrivacyDe /> : <PrivacyEn />}
     </LegalPage>
   );
 }
 
 const link = "text-red underline underline-offset-[3px]";
 
-function PrivacyEn({ operator }: { operator: Operator | null }) {
+function PrivacyEn() {
   return (
     <>
       <p className="mt-8 text-center text-muted italic">As of 11 November 2026</p>
@@ -58,7 +52,7 @@ function PrivacyEn({ operator }: { operator: Operator | null }) {
 
       <Section title="Who is responsible">
         <p>The controller within the meaning of the GDPR is:</p>
-        <OperatorAddress operator={operator} />
+        <OperatorAddress />
       </Section>
 
       <Section title="Hosting and access logs">
@@ -185,7 +179,7 @@ function PrivacyEn({ operator }: { operator: Operator | null }) {
   );
 }
 
-function PrivacyDe({ operator }: { operator: Operator | null }) {
+function PrivacyDe() {
   return (
     <>
       <p className="mt-8 text-center text-muted italic">Stand: 11. November 2026</p>
@@ -201,7 +195,7 @@ function PrivacyDe({ operator }: { operator: Operator | null }) {
 
       <Section title="Verantwortlicher">
         <p>Verantwortlich im Sinne der DSGVO ist:</p>
-        <OperatorAddress operator={operator} />
+        <OperatorAddress />
       </Section>
 
       <Section title="Hosting und Zugriffsprotokolle">
